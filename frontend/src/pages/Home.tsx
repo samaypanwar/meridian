@@ -1,18 +1,30 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import DuplicateSourceNotice from "../components/DuplicateSourceNotice";
 import AppShell from "../components/AppShell";
 import CycleStrip from "../components/CycleStrip";
+import QueueFilterBar from "../components/QueueFilterBar";
+import QueueSearchResults from "../components/QueueSearchResults";
 import SourceCard from "../components/SourceCard";
 import QueueModeToggle from "../components/QueueModeToggle";
 import {
   addSource,
+  DuplicateSourceError,
   getGoals,
   getQueue,
   getSource,
+  searchQuery,
   sleep,
   type AddSourceResponse,
   type QueueMode,
   type SourceDetail,
 } from "../api";
+import { parseGoalsMd, type ParsedTheme } from "../lib/goalsParse";
+import {
+  getStoredQueueFilters,
+  setStoredQueueFilters,
+} from "../lib/queueFilterStorage";
+import type { Platform } from "../lib/platform";
+import { applyQueueFilters } from "../lib/queueFilters";
 import { getStoredQueueMode, setStoredQueueMode } from "../lib/queueMode";
 
 interface PendingAdd {
@@ -32,17 +44,30 @@ const PAGE_SIZES: PageSize[] = [10, 20, 30];
 
 export default function Home() {
   const [ref, setRef] = useState("");
-  const [active, setActive] = useState<SourceDetail[]>([]);
-  const [backlog, setBacklog] = useState<SourceDetail[]>([]);
-  const [showBacklog, setShowBacklog] = useState(false);
+  const [queued, setQueued] = useState<SourceDetail[]>([]);
   const [pendingAdds, setPendingAdds] = useState<PendingAdd[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [duplicateSource, setDuplicateSource] = useState<SourceDetail | null>(null);
   const [cycleCaptures, setCycleCaptures] = useState(0);
   const [cyclePassRate, setCyclePassRate] = useState(0);
   const [queueView, setQueueView] = useState<QueueView>("grid");
   const [pageSize, setPageSize] = useState<PageSize>(10);
   const [queueMode, setQueueMode] = useState<QueueMode>(() => getStoredQueueMode());
   const [page, setPage] = useState(0);
+  const [themes, setThemes] = useState<ParsedTheme[]>([]);
+  const [selectedMedia, setSelectedMedia] = useState<Platform[]>(
+    () => getStoredQueueFilters().media,
+  );
+  const [selectedTheme, setSelectedTheme] = useState<string | "all">(
+    () => getStoredQueueFilters().theme,
+  );
+  const [searchInput, setSearchInput] = useState("");
+  const [submittedSearch, setSubmittedSearch] = useState("");
+  const [searchQueueResults, setSearchQueueResults] = useState<SourceDetail[]>([]);
+  const [searchCaptureText, setSearchCaptureText] = useState<string | null>(null);
+  const [searchCitations, setSearchCitations] = useState<string[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const pollTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
   useEffect(() => {
@@ -51,14 +76,24 @@ export default function Home() {
         const ind = data.indicators as { captures_this_cycle?: number; review_pass_rate?: number };
         setCycleCaptures(ind.captures_this_cycle ?? 0);
         setCyclePassRate(ind.review_pass_rate ?? 0);
+        if (typeof data.goals_md === "string") {
+          setThemes(parseGoalsMd(data.goals_md).themes);
+        }
       })
       .catch(() => undefined);
   }, []);
 
+  useEffect(() => {
+    setStoredQueueFilters({ media: selectedMedia, theme: selectedTheme });
+  }, [selectedMedia, selectedTheme]);
+
   const refresh = useCallback(async () => {
     const data = await getQueue(queueMode);
-    setActive(data.active);
-    setBacklog(data.backlog ?? []);
+    const allQueued =
+      data.queued?.length > 0
+        ? data.queued
+        : [...data.active, ...(data.backlog ?? [])];
+    setQueued(allQueued);
     setPendingAdds((current) => {
       const serverPendingIds = new Set(data.pending.map((item) => item.source.id));
       const merged = current.filter(
@@ -165,13 +200,45 @@ export default function Home() {
 
   useEffect(() => {
     setPage(0);
-  }, [pageSize, queueView, active.length, queueMode]);
+  }, [pageSize, queueView, queued.length, queueMode, selectedMedia, selectedTheme]);
 
-  const pageCount = Math.max(1, Math.ceil(active.length / pageSize));
+  const filterState = useMemo(
+    () => ({ media: selectedMedia, theme: selectedTheme }),
+    [selectedMedia, selectedTheme],
+  );
+
+  const filteredQueue = useMemo(
+    () => applyQueueFilters(queued, filterState),
+    [queued, filterState],
+  );
+
+  const pageCount = Math.max(1, Math.ceil(filteredQueue.length / pageSize));
   const safePage = Math.min(page, pageCount - 1);
   const pageStart = safePage * pageSize;
-  const visibleActive = active.slice(pageStart, pageStart + pageSize);
-  const pageEnd = Math.min(pageStart + pageSize, active.length);
+  const visibleQueue = filteredQueue.slice(pageStart, pageStart + pageSize);
+  const pageEnd = Math.min(pageStart + pageSize, filteredQueue.length);
+  const filtersActive = selectedMedia.length > 0 || selectedTheme !== "all";
+
+  useEffect(() => {
+    if (!submittedSearch.trim()) return;
+    void (async () => {
+      setSearchLoading(true);
+      setSearchError(null);
+      try {
+        const result = await searchQuery(submittedSearch);
+        setSearchQueueResults(applyQueueFilters(result.queue, filterState));
+        setSearchCaptureText(result.captures.text);
+        setSearchCitations(result.captures.citations ?? []);
+      } catch (err) {
+        setSearchError(String(err));
+        setSearchQueueResults([]);
+        setSearchCaptureText(null);
+        setSearchCitations([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    })();
+  }, [submittedSearch, filterState]);
 
   async function onAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -179,10 +246,15 @@ export default function Home() {
     if (!submittedRef) return;
     setRef("");
     setError(null);
+    setDuplicateSource(null);
     try {
       const result = await addSource(submittedRef);
       trackPendingAdd(result, submittedRef);
     } catch (err) {
+      if (err instanceof DuplicateSourceError) {
+        setDuplicateSource(err.existing);
+        return;
+      }
       setError(String(err));
     }
   }
@@ -196,12 +268,18 @@ export default function Home() {
           <input
             value={ref}
             onChange={(e) => setRef(e.target.value)}
-            placeholder="URL, PDF path, or YouTube link"
+            placeholder="URL, direct PDF link, local PDF path, or YouTube"
           />
           <button type="submit" className="btn btn--primary">
             Add source
           </button>
         </form>
+        {duplicateSource && (
+          <DuplicateSourceNotice
+            existing={duplicateSource}
+            onDismiss={() => setDuplicateSource(null)}
+          />
+        )}
         {error && <p className="error">{error}</p>}
         <CycleStrip captures={cycleCaptures} passRate={cyclePassRate} />
       </section>
@@ -234,16 +312,69 @@ export default function Home() {
             Curiosity mode · Have fun — follow what pulls you.
           </div>
         )}
+
+        <QueueFilterBar
+          queueItems={queued}
+          themes={themes}
+          selectedMedia={selectedMedia}
+          selectedTheme={selectedTheme}
+          searchInput={searchInput}
+          searchBusy={searchLoading}
+          onMediaChange={(media) => {
+            setSelectedMedia(media);
+            setPage(0);
+          }}
+          onThemeChange={(theme) => {
+            setSelectedTheme(theme);
+            setPage(0);
+          }}
+          onSearchInputChange={setSearchInput}
+          onSearchSubmit={() => {
+            const trimmed = searchInput.trim();
+            setSubmittedSearch(trimmed);
+            if (!trimmed) {
+              setSearchQueueResults([]);
+              setSearchCaptureText(null);
+              setSearchCitations([]);
+              setSearchError(null);
+            }
+          }}
+          onClearSearch={() => {
+            setSearchInput("");
+            setSubmittedSearch("");
+            setSearchQueueResults([]);
+            setSearchCaptureText(null);
+            setSearchCitations([]);
+            setSearchError(null);
+          }}
+        />
+
+        <QueueSearchResults
+          query={submittedSearch}
+          queueItems={searchQueueResults}
+          captureText={searchCaptureText}
+          citations={searchCitations}
+          rankMode={queueMode}
+          loading={searchLoading}
+          error={searchError}
+        />
+
         <div className="section-header">
           <div>
             <h2 className="section-title">
               {queueMode === "curiosity" ? "Curiosity queue" : "Active queue"}
             </h2>
             <span className="section-caption">
-              {active.length} sources ·{" "}
+              {filteredQueue.length} source{filteredQueue.length === 1 ? "" : "s"}
+              {filtersActive && queued.length !== filteredQueue.length
+                ? ` (filtered from ${queued.length})`
+                : ""}
+              {" · "}
               {queueMode === "curiosity"
                 ? "sorted by curiosity score"
-                : "sorted by goal priority"}
+                : selectedTheme !== "all"
+                  ? `sorted by ${selectedTheme.split("/").pop()} fit`
+                  : "sorted by goal priority"}
             </span>
           </div>
           <div className="queue-controls">
@@ -279,15 +410,19 @@ export default function Home() {
             </label>
           </div>
         </div>
-        {active.length === 0 ? (
-          <p className="empty-state">Queue is empty. Add a source above.</p>
+        {filteredQueue.length === 0 ? (
+          <p className="empty-state">
+            {queued.length === 0
+              ? "Queue is empty. Add a source above."
+              : "No sources match these filters."}
+          </p>
         ) : (
           <>
             <ul
               className={`source-card-grid${queueView === "grid" ? " source-card-grid--two-col" : " source-card-grid--list"
                 }`}
             >
-              {visibleActive.map((item, index) => (
+              {visibleQueue.map((item, index) => (
                 <li
                   key={item.source.id}
                   className={pageStart + index === 0 ? "source-card-grid__hero" : undefined}
@@ -296,10 +431,10 @@ export default function Home() {
                 </li>
               ))}
             </ul>
-            {active.length > pageSize && (
+            {filteredQueue.length > pageSize && (
               <div className="queue-pagination">
                 <span className="queue-pagination__summary">
-                  Showing {pageStart + 1}–{pageEnd} of {active.length}
+                  Showing {pageStart + 1}–{pageEnd} of {filteredQueue.length}
                 </span>
                 <div className="queue-pagination__actions">
                   <button
@@ -327,27 +462,6 @@ export default function Home() {
           </>
         )}
       </section>
-
-      {backlog.length > 0 && (
-        <section className="backlog-section">
-          <button
-            type="button"
-            className="backlog-toggle"
-            onClick={() => setShowBacklog((v) => !v)}
-          >
-            {showBacklog ? "Hide" : "Show"} backlog ({backlog.length})
-          </button>
-          {showBacklog && (
-            <ul className="source-card-grid source-card-grid--compact">
-              {backlog.map((item) => (
-                <li key={item.source.id}>
-                  <SourceCard item={item} compact />
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
     </AppShell>
   );
 }

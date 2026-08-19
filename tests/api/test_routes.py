@@ -26,6 +26,7 @@ def test_post_sources_and_get_queue(tmp_path) -> None:
         data_dir=tmp_path / "data",
         vault_path=tmp_path / "vault" / "00-inbox",
         openrouter_api_key="test",
+        embed_model="stub",
     )
     with patch(
         "meridian.api.app.fetch_normalized",

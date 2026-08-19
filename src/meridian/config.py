@@ -1,7 +1,15 @@
 from pathlib import Path
 
-from pydantic import Field, computed_field
+from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _expand_path(value: object) -> object:
+    if isinstance(value, str):
+        return Path(value).expanduser()
+    if isinstance(value, Path):
+        return value.expanduser()
+    return value
 
 
 class Settings(BaseSettings):
@@ -27,6 +35,11 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     llm_model: str = "google/gemini-2.0-flash-001"
     embed_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+
+    @field_validator("vault_path", "capture_path", "data_dir", mode="before")
+    @classmethod
+    def expand_user_paths(cls, value: object) -> object:
+        return _expand_path(value)
 
     @computed_field  # type: ignore[prop-decorator]
     @property

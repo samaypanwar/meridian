@@ -13,6 +13,7 @@ def test_scoring_worker_updates_title_from_display_title(tmp_path) -> None:
         data_dir=tmp_path / "data",
         vault_path=tmp_path / "vault",
         openrouter_api_key="test",
+        embed_model="stub",
     )
     conn = db.connect(settings.db_path)
     db.init_schema(conn)

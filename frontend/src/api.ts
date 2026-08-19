@@ -5,6 +5,7 @@ export interface Source {
   source_type: string;
   genre: string | null;
   status: string;
+  platform?: string | null;
   normalized_text?: string | null;
 }
 
@@ -33,16 +34,62 @@ export interface AddSourceResponse {
   status_message: string;
 }
 
+export class DuplicateSourceError extends Error {
+  existing: SourceDetail;
+
+  constructor(existing: SourceDetail) {
+    super("This source is already in Meridian.");
+    this.name = "DuplicateSourceError";
+    this.existing = existing;
+  }
+}
+
 export interface QueueResponse {
   active: SourceDetail[];
   pending: SourceDetail[];
   backlog: SourceDetail[];
+  queued: SourceDetail[];
   mode?: QueueMode;
+}
+
+export interface SearchResponse {
+  query: string;
+  queue: SourceDetail[];
+  captures: {
+    text: string;
+    citations: string[];
+  };
 }
 
 export type QueueMode = "goals" | "curiosity";
 
 const BASE = "/api";
+
+async function parseErrorResponse(resp: Response): Promise<never> {
+  const raw = await resp.text();
+  try {
+    const parsed = JSON.parse(raw) as {
+      detail?: string | { message?: string; existing?: SourceDetail };
+    };
+    if (resp.status === 409 && parsed.detail && typeof parsed.detail === "object") {
+      const existing = parsed.detail.existing;
+      if (existing?.source?.id) {
+        throw new DuplicateSourceError(existing);
+      }
+    }
+    if (typeof parsed.detail === "string") {
+      throw new Error(parsed.detail);
+    }
+  } catch (error) {
+    if (error instanceof DuplicateSourceError) {
+      throw error;
+    }
+    if (error instanceof Error && error.message !== raw) {
+      throw error;
+    }
+  }
+  throw new Error(raw);
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const resp = await fetch(`${BASE}${path}`, {
@@ -50,18 +97,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   if (!resp.ok) {
-    const raw = await resp.text();
-    try {
-      const parsed = JSON.parse(raw) as { detail?: string };
-      if (typeof parsed.detail === "string") {
-        throw new Error(parsed.detail);
-      }
-    } catch (error) {
-      if (error instanceof Error && error.message !== raw) {
-        throw error;
-      }
-    }
-    throw new Error(raw);
+    await parseErrorResponse(resp);
   }
   return resp.json() as Promise<T>;
 }
@@ -113,6 +149,10 @@ export function captureApprove(id: number, preview: string) {
 
 export function kbQuery(q: string) {
   return request<{ text: string; citations: string[] }>(`/kb/query?q=${encodeURIComponent(q)}`);
+}
+
+export function searchQuery(q: string) {
+  return request<SearchResponse>(`/search?q=${encodeURIComponent(q)}`);
 }
 
 export function getDueReviews() {

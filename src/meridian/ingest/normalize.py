@@ -9,9 +9,9 @@ from meridian.store.models import Source
 
 def detect_type(url_or_path: str) -> str:
     lowered = url_or_path.lower().strip()
-    if lowered.endswith(".pdf"):
-        return "pdf"
     parsed = urlparse(lowered)
+    if parsed.path.lower().endswith(".pdf"):
+        return "pdf"
     host = parsed.netloc.removeprefix("www.")
     if host in {"arxiv.org", "export.arxiv.org"} or "arxiv.org" in host:
         return "arxiv"

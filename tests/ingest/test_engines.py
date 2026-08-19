@@ -38,6 +38,34 @@ def test_pdf_extract_text_from_fixture(tmp_path: Path) -> None:
     assert meta["words"] >= 3
 
 
+def test_pdf_extract_text_from_url() -> None:
+    url = "https://example.com/notes.pdf"
+    pdf_doc = fitz.open()
+    page = pdf_doc.new_page()
+    page.insert_text((72, 72), "Remote survival analysis notes.")
+    pdf_bytes = pdf_doc.tobytes()
+    pdf_doc.close()
+
+    with patch(
+        "meridian.ingest.pdf.httpx.get",
+        return_value=type(
+            "Resp",
+            (),
+            {
+                "status_code": 200,
+                "content": pdf_bytes,
+                "headers": {"content-type": "application/pdf"},
+                "raise_for_status": lambda self: None,
+            },
+        )(),
+    ):
+        text, meta = pdf.extract_text(url)
+
+    assert "survival analysis" in text.lower()
+    assert meta["pages"] == 1
+    assert meta["pdf_url"] == url
+
+
 def test_transcript_fetch_captions_from_fixture() -> None:
     fixture = Path(__file__).parent / "fixtures" / "youtube_captions.json"
     captions = json.loads(fixture.read_text())

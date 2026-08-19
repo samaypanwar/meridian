@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import httpx
@@ -14,6 +15,13 @@ from youtube_transcript_api._errors import (
 )
 
 from meridian.ingest.transcript_errors import YouTubeTranscriptBlocked
+
+_WATCH_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
+_OG_TITLE_RE = re.compile(r'<meta property="og:title" content="([^"]+)"')
+_CHANNEL_NAME_RE = re.compile(r'"ownerChannelName":"([^"\\]+)"')
 
 
 def fetch_captions(url: str) -> tuple[str, dict[str, Any]]:
@@ -56,19 +64,61 @@ def fetch_captions(url: str) -> tuple[str, dict[str, Any]]:
 
 
 def fetch_video_meta(url: str) -> dict[str, Any]:
-    response = httpx.get(
-        "https://www.youtube.com/oembed",
-        params={"url": url, "format": "json"},
-        timeout=30.0,
-        follow_redirects=True,
-    )
-    response.raise_for_status()
-    payload = response.json()
     meta: dict[str, Any] = {"url": url}
+    oembed = _fetch_oembed_meta(url)
+    if oembed:
+        meta.update(oembed)
+        return meta
+
+    watch = _fetch_watch_page_meta(url)
+    meta.update(watch)
+    if "title" not in meta:
+        meta["title"] = _video_id_from_url(url)
+    return meta
+
+
+def _fetch_oembed_meta(url: str) -> dict[str, Any]:
+    try:
+        response = httpx.get(
+            "https://www.youtube.com/oembed",
+            params={"url": url, "format": "json"},
+            timeout=30.0,
+            follow_redirects=True,
+        )
+        if not response.is_success:
+            return {}
+        payload = response.json()
+    except httpx.HTTPError:
+        return {}
+
+    meta: dict[str, Any] = {"meta_engine": "youtube_oembed"}
     if payload.get("title"):
         meta["title"] = payload["title"]
     if payload.get("author_name"):
         meta["author"] = payload["author_name"]
+    return meta
+
+
+def _fetch_watch_page_meta(url: str) -> dict[str, Any]:
+    try:
+        response = httpx.get(
+            url,
+            headers={"User-Agent": _WATCH_USER_AGENT},
+            timeout=30.0,
+            follow_redirects=True,
+        )
+        response.raise_for_status()
+    except httpx.HTTPError:
+        return {}
+
+    html = response.text
+    meta: dict[str, Any] = {"meta_engine": "youtube_watch_page"}
+    title_match = _OG_TITLE_RE.search(html)
+    if title_match:
+        meta["title"] = title_match.group(1)
+    channel_match = _CHANNEL_NAME_RE.search(html)
+    if channel_match:
+        meta["author"] = channel_match.group(1)
     return meta
 
 

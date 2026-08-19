@@ -389,6 +389,96 @@ button:disabled {
   text-align: center;
 }
 
+.queue-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.queue-filter-bar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem 0.65rem;
+}
+
+.queue-filter-bar__label {
+  flex: 0 0 4.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  padding-top: 0.35rem;
+}
+
+.queue-filter-bar__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.filter-chip {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.filter-chip:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.filter-chip--active {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.queue-filter-bar__search {
+  margin-top: 0.15rem;
+}
+
+.queue-filter-bar__hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.queue-search-results {
+  margin-bottom: 1rem;
+}
+
+.queue-search-results__header {
+  margin-bottom: 0.75rem;
+}
+
+.queue-search-results__section {
+  margin-top: 1rem;
+}
+
+.queue-search-results__section:first-of-type {
+  margin-top: 0.5rem;
+}
+
+.section-title--small {
+  font-size: 1rem;
+  margin-bottom: 0.15rem;
+}
+
 .queue-controls__btn--curiosity.queue-controls__btn--active {
   background: var(--color-theme-soft);
   color: var(--color-theme);
@@ -1067,6 +1157,30 @@ button:disabled {
 
 .error {
   color: var(--red);
+}
+
+.duplicate-notice {
+  margin-top: 0.75rem;
+  padding: 1rem 1.1rem;
+  border-color: var(--color-accent-muted, #c9d7ff);
+  background: var(--color-surface-raised, #fff);
+}
+
+.duplicate-notice__message {
+  margin: 0 0 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.duplicate-notice__title {
+  margin: 0 0 0.85rem;
+  font-weight: 600;
+}
+
+.duplicate-notice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .success {

@@ -25,3 +25,14 @@ def test_settings_loads_from_env_and_db_path_under_data_dir(
     assert settings.openrouter_api_key == "test-key"
     assert settings.llm_model == "test/model"
     assert settings.embed_model
+
+
+def test_settings_expands_tilde_in_paths(monkeypatch: object, tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("MERIDIAN_CAPTURE_PATH", "~/captures/meridian")
+
+    settings = Settings()
+
+    assert settings.capture_path == home / "captures" / "meridian"

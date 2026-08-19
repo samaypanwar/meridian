@@ -6,6 +6,7 @@ from meridian.ingest import normalize
 @pytest.mark.parametrize(
     ("ref", "expected"),
     [
+        ("https://example.com/paper.pdf?download=1", "pdf"),
         ("https://arxiv.org/abs/2301.00001", "arxiv"),
         ("/path/to/paper.pdf", "pdf"),
         ("paper.pdf", "pdf"),

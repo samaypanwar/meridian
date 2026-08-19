@@ -6,6 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from meridian.config import Settings
+from meridian.kb import index as kb_index
 from meridian.scoring import radar
 from meridian.store import db
 from meridian.store import repository as repo
@@ -50,6 +51,13 @@ def score_source_in_background(source_id: int, settings: Settings) -> None:
                 "UPDATE sources SET status = 'queued' WHERE id = ?", (source_id,)
             )
         conn.commit()
+        source = repo.get_source(conn, source_id)
+        if source and source.normalized_text and source.status == "queued":
+            try:
+                kb_index.index_source(conn, source_id, settings=settings)
+                conn.commit()
+            except Exception:
+                logger.exception("Search indexing failed for source %s", source_id)
     except Exception:
         logger.exception("Radar scoring failed for source %s", source_id)
         conn.execute("UPDATE sources SET status = 'revisit' WHERE id = ?", (source_id,))

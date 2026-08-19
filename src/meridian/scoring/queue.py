@@ -31,18 +31,19 @@ def _rank_score_for_row(row: sqlite3.Row, mode: QueueMode) -> float:
     return _priority_for_row(row)
 
 
+def ranked(conn: sqlite3.Connection, *, mode: QueueMode = "goals") -> list[Source]:
+    rows = _queued_rows(conn)
+    return [source_from_row(row) for row in _rank_rows(rows, mode=mode)]
+
+
 def active(
     conn: sqlite3.Connection, limit: int = 10, *, mode: QueueMode = "goals"
 ) -> list[Source]:
-    rows = _queued_rows(conn)
-    ranked = _rank_rows(rows, mode=mode)
-    return [source_from_row(row) for row in ranked[:limit]]
+    return ranked(conn, mode=mode)[:limit]
 
 
 def backlog(conn: sqlite3.Connection, *, mode: QueueMode = "goals") -> list[Source]:
-    rows = _queued_rows(conn)
-    ranked = _rank_rows(rows, mode=mode)
-    return [source_from_row(row) for row in ranked[10:]]
+    return ranked(conn, mode=mode)[10:]
 
 
 def pending(conn: sqlite3.Connection) -> list[Source]:

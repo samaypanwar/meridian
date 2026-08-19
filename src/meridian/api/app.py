@@ -23,9 +23,12 @@ from meridian.api.source_ops import (
 )
 from meridian.config import Settings, get_settings
 from meridian.ingest import normalize, transcript
+from meridian.ingest.canonical import canonical_ref
+from meridian.ingest.platform import platform_for_source
 from meridian.ingest.fetch import fetch_normalized
 from meridian.ingest.titles import clean_extracted_title
 from meridian.kb import index, query
+from meridian.kb import search as kb_search
 from meridian.review import questions, scheduler
 from meridian.scoring import indicators, queue
 from meridian.store import db
@@ -106,6 +109,7 @@ def _to_source_response(source: Any) -> schemas.SourceResponse:
         source_type=source.source_type,
         genre=source.genre,
         status=source.status,
+        platform=platform_for_source(url=source.url, source_type=source.source_type),
         normalized_text=source.normalized_text,
     )
 
@@ -192,6 +196,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         conn: Any = Depends(get_conn),
         settings: Settings = Depends(get_settings_from_app),
     ) -> schemas.AddSourceResponse:
+        try:
+            canonical_key = canonical_ref(body.ref)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+        existing = repo.find_by_canonical_ref(conn, canonical_key)
+        if existing is not None and existing.id is not None:
+            scores = repo.get_scores(conn, existing.id)
+            existing_detail = _detail(conn, existing, scores)
+            raise HTTPException(
+                status_code=409,
+                detail=schemas.DuplicateSourceDetail(
+                    message="This source is already in Meridian.",
+                    existing=existing_detail,
+                ).model_dump(),
+            )
+
         source = normalize.ingest(body.ref)
         try:
             pasted = (body.transcript or "").strip()
@@ -350,22 +371,57 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         conn: Any = Depends(get_conn),
     ) -> schemas.QueueResponse:
         queue_mode: queue.QueueMode = "curiosity" if mode == "curiosity" else "goals"
-        active = queue.active(conn, mode=queue_mode)
-        items = []
-        for source in active:
-            scores = repo.get_scores(conn, source.id or 0)
-            items.append(_detail(conn, source, scores))
+        ranked_sources = queue.ranked(conn, mode=queue_mode)
+        queued_items = [
+            _detail(conn, source, repo.get_scores(conn, source.id or 0))
+            for source in ranked_sources
+        ]
         pending_items = [
             _detail(conn, source, repo.get_scores(conn, source.id or 0))
             for source in queue.pending(conn)
         ]
-        backlog_items = [
-            _detail(conn, source, repo.get_scores(conn, source.id or 0))
-            for source in queue.backlog(conn, mode=queue_mode)
-        ]
         return schemas.QueueResponse(
-            active=items, pending=pending_items, backlog=backlog_items, mode=queue_mode
+            active=queued_items[:10],
+            backlog=queued_items[10:],
+            queued=queued_items,
+            pending=pending_items,
+            mode=queue_mode,
         )
+
+    @app.get("/search", response_model=schemas.SearchResponse)
+    def search_route(
+        q: str = Query(...),
+        conn: Any = Depends(get_conn),
+        settings: Settings = Depends(get_settings_from_app),
+    ) -> schemas.SearchResponse:
+        result = kb_search.unified(conn, q, settings=settings)
+        queue_items = []
+        for source_id in result.queue_source_ids:
+            bundle = repo.source_with_scores(conn, source_id)
+            if bundle is None:
+                continue
+            queue_items.append(_detail(conn, bundle["source"], bundle["scores"]))
+        return schemas.SearchResponse(
+            query=result.query,
+            queue=queue_items,
+            captures=schemas.CaptureSearchResponse(
+                text=result.captures.text,
+                citations=[c for c in result.captures.citations if c],
+            ),
+        )
+
+    @app.post("/reindex")
+    def reindex_route(
+        settings: Settings = Depends(get_settings_from_app),
+    ) -> dict[str, int]:
+        conn = db.connect(settings.db_path)
+        try:
+            count = index.reindex(conn, settings=settings)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        finally:
+            conn.close()
+        return {"indexed_chunks": count}
 
     @app.get("/sources/{source_id}", response_model=schemas.SourceDetailResponse)
     def get_source(source_id: int, conn: Any = Depends(get_conn)) -> Any:

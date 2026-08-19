@@ -8,7 +8,9 @@ if TYPE_CHECKING:
 _model = None
 
 
-def embed_texts(texts: list[str], *, settings: Settings | None = None) -> list[list[float]]:
+def embed_texts(
+    texts: list[str], *, settings: Settings | None = None
+) -> list[list[float]]:
     if not texts:
         return []
     dim = 384
@@ -16,9 +18,19 @@ def embed_texts(texts: list[str], *, settings: Settings | None = None) -> list[l
         return [_stub_vector(t, dim) for t in texts]
     global _model
     if _model is None:
-        from sentence_transformers import SentenceTransformer
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError as exc:
+            raise RuntimeError(
+                "sentence-transformers is not installed in this environment. "
+                "Run: poetry install"
+            ) from exc
 
-        model_name = settings.embed_model if settings else "sentence-transformers/all-MiniLM-L6-v2"
+        model_name = (
+            settings.embed_model
+            if settings
+            else "sentence-transformers/all-MiniLM-L6-v2"
+        )
         _model = SentenceTransformer(model_name)
     encoded = _model.encode(texts, normalize_embeddings=True)
     return [vec.tolist() for vec in encoded]

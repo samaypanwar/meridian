@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS sources (
   length_meta     TEXT,
   blob_path       TEXT,
   normalized_text TEXT,
-  status          TEXT NOT NULL
+  status          TEXT NOT NULL,
+  canonical_ref   TEXT
 );
 
 CREATE TABLE IF NOT EXISTS scores (
@@ -70,6 +71,8 @@ def connect(path: Path | str) -> sqlite3.Connection:
     conn = sqlite3.connect(path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 5000")
+    _load_vec_extension(conn)
     return conn
 
 
@@ -81,7 +84,6 @@ def _load_vec_extension(conn: sqlite3.Connection) -> None:
 
 def init_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA_SQL)
-    _load_vec_extension(conn)
     conn.execute(
         f"""
         CREATE VIRTUAL TABLE IF NOT EXISTS emb USING vec0(
@@ -89,4 +91,35 @@ def init_schema(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    migrate_schema(conn)
     conn.commit()
+
+
+def migrate_schema(conn: sqlite3.Connection) -> None:
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(sources)")}
+    if "canonical_ref" not in columns:
+        conn.execute("ALTER TABLE sources ADD COLUMN canonical_ref TEXT")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_sources_canonical_ref ON sources(canonical_ref)"
+    )
+    _backfill_canonical_refs(conn)
+
+
+def _backfill_canonical_refs(conn: sqlite3.Connection) -> None:
+    from meridian.ingest import canonical
+
+    rows = conn.execute(
+        "SELECT id, url, blob_path FROM sources WHERE canonical_ref IS NULL"
+    ).fetchall()
+    for row in rows:
+        ref = row["url"] or row["blob_path"]
+        if not ref:
+            continue
+        try:
+            key = canonical.canonical_ref(ref)
+        except ValueError:
+            continue
+        conn.execute(
+            "UPDATE sources SET canonical_ref = ? WHERE id = ?",
+            (key, row["id"]),
+        )

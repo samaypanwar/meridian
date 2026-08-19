@@ -33,6 +33,7 @@ class SourceResponse(BaseModel):
     source_type: str
     genre: str | None
     status: str
+    platform: str | None = None
     normalized_text: str | None = None
 
 
@@ -55,6 +56,11 @@ class AddSourceResponse(BaseModel):
     status_message: str
 
 
+class DuplicateSourceDetail(BaseModel):
+    message: str
+    existing: SourceDetailResponse
+
+
 class SourceDetailResponse(BaseModel):
     source: SourceResponse
     scores: ScoresResponse | None = None
@@ -65,4 +71,16 @@ class QueueResponse(BaseModel):
     active: list[SourceDetailResponse]
     pending: list[SourceDetailResponse] = []
     backlog: list[SourceDetailResponse] = []
+    queued: list[SourceDetailResponse] = []
     mode: str = "goals"
+
+
+class CaptureSearchResponse(BaseModel):
+    text: str
+    citations: list[str]
+
+
+class SearchResponse(BaseModel):
+    query: str
+    queue: list[SourceDetailResponse]
+    captures: CaptureSearchResponse

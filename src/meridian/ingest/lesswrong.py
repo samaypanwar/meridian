@@ -13,7 +13,10 @@ LW_HOSTS = {
     "www.alignmentforum.org",
     "alignmentforum.org",
 }
-POST_ID_RE = re.compile(r"/p/([A-Za-z0-9]+)")
+POST_ID_PATTERNS = (
+    re.compile(r"/posts/([A-Za-z0-9]+)"),
+    re.compile(r"/p/([A-Za-z0-9]+)"),
+)
 
 POST_QUERY = """
 query MeridianFetchPost($id: String!) {
@@ -40,8 +43,11 @@ def is_lesswrong_url(url: str) -> bool:
 
 
 def post_id_from_url(url: str) -> str | None:
-    match = POST_ID_RE.search(url)
-    return match.group(1) if match else None
+    for pattern in POST_ID_PATTERNS:
+        match = pattern.search(url)
+        if match:
+            return match.group(1)
+    return None
 
 
 def fetch_text(url: str) -> tuple[str, dict[str, Any]]:
