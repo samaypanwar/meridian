@@ -13,6 +13,7 @@ pysqlite3 = "^0.6.0"
 trafilatura = "^2.2.0"
 pymupdf = "^1.28.2"
 youtube-transcript-api = "^1.2.4"
+httpx = "^0.28.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
