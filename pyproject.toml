@@ -14,6 +14,8 @@ trafilatura = "^2.2.0"
 pymupdf = "^1.28.2"
 youtube-transcript-api = "^1.2.4"
 httpx = "^0.28.1"
+fastapi = "^0.141.1"
+uvicorn = "^0.52.4"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
