@@ -31,7 +31,9 @@ def _rank_score_for_row(row: sqlite3.Row, mode: QueueMode) -> float:
     return _priority_for_row(row)
 
 
-def active(conn: sqlite3.Connection, limit: int = 10, *, mode: QueueMode = "goals") -> list[Source]:
+def active(
+    conn: sqlite3.Connection, limit: int = 10, *, mode: QueueMode = "goals"
+) -> list[Source]:
     rows = _queued_rows(conn)
     ranked = _rank_rows(rows, mode=mode)
     return [source_from_row(row) for row in ranked[:limit]]
@@ -68,7 +70,9 @@ def _queued_rows(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     return list(rows)
 
 
-def _rank_rows(rows: list[sqlite3.Row], *, mode: QueueMode = "goals") -> list[sqlite3.Row]:
+def _rank_rows(
+    rows: list[sqlite3.Row], *, mode: QueueMode = "goals"
+) -> list[sqlite3.Row]:
     def sort_key(row: sqlite3.Row) -> tuple[float, float]:
         manual = row["manual_rank"]
         rank_score = _rank_score_for_row(row, mode)

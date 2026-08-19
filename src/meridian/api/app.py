@@ -39,6 +39,13 @@ def _goals_md() -> str:
     return goals_path.read_text(encoding="utf-8")
 
 
+def _goals_rationale_md() -> str:
+    rationale_path = Path(__file__).resolve().parents[3] / "goals-rationale.md"
+    if rationale_path.exists():
+        return rationale_path.read_text(encoding="utf-8")
+    return ""
+
+
 logger = logging.getLogger(__name__)
 
 _YOUTUBE_DEGRADED = frozenset({"blocked", "disabled", "missing", "empty"})
@@ -500,6 +507,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     ) -> dict[str, Any]:
         return {
             "goals_md": _goals_md(),
+            "goals_rationale_md": _goals_rationale_md(),
             "capture_path": str(settings.capture_path),
             "indicators": indicators.for_cycle(conn, settings.capture_path),
         }

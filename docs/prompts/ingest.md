@@ -62,7 +62,14 @@ Score the source and frame it. Return STRICT JSON, no prose outside the JSON:
 Rules:
 - `relevance` is measured against the goals' Themes and current-cycle Objectives.
 - `theme_breakdown` keys must be themes that appear in the goals doc.
-- `curiosity` is intrinsic interest, independent of the goals.
+- `curiosity` is how much THIS user would want to read this for its own sake,
+  **independent of cycle objectives** (explore lane, not exploit). Score it
+  separately from `relevance` — a source can be high curiosity and low relevance.
+  Use the **full 0–10 range**; do not default everything to 5–6.
+  Anchors: 0–2 no pull; 3–4 mild interest; 5–6 solid but not exciting; 7–8 you'd
+  reach for this on a free afternoon; 9–10 must-read curiosity. Boost if the topic
+  matches bullets under `## Curiosity` in the goals doc. Lower if it feels like
+  obligation reading even when relevant.
 - `effort_hours` estimates time to consume at the depth the objective needs.
 - `reading_plan` is empty for short sources; populated for long ones (books,
   papers, long talks).

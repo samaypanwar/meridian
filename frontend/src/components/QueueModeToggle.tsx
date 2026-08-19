@@ -19,9 +19,8 @@ export default function QueueModeToggle({
       </button>
       <button
         type="button"
-        className={`queue-controls__btn queue-controls__btn--curiosity${
-          mode === "curiosity" ? " queue-controls__btn--active" : ""
-        }`}
+        className={`queue-controls__btn queue-controls__btn--curiosity${mode === "curiosity" ? " queue-controls__btn--active" : ""
+          }`}
         onClick={() => onChange("curiosity")}
         title="Rank by intrinsic curiosity (explore)"
       >

@@ -133,6 +133,7 @@ export function getCaptureDestination(id: number) {
 export function getGoals() {
   return request<{
     goals_md: string;
+    goals_rationale_md: string;
     capture_path: string;
     indicators: Record<string, unknown>;
   }>("/goals");

@@ -378,27 +378,15 @@ button:disabled {
 }
 
 .curiosity-banner {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
   margin-bottom: 1rem;
-  padding: 0.85rem 1rem;
+  padding: 0.65rem 1rem;
   border: 1px solid var(--color-theme);
   border-radius: var(--radius-md);
   background: var(--color-theme-soft);
-  font-size: 0.9rem;
-  line-height: 1.45;
-}
-
-.curiosity-banner strong {
+  font-size: 0.92rem;
+  font-weight: 500;
   color: var(--color-theme);
-  font-size: 0.82rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.curiosity-banner span {
-  color: var(--color-text-secondary);
+  text-align: center;
 }
 
 .queue-controls__btn--curiosity.queue-controls__btn--active {
@@ -768,7 +756,89 @@ button:disabled {
   color: var(--text-secondary);
   font-size: 1.05rem;
   line-height: 1.5;
+  margin: 0 0 0.65rem;
+}
+
+.goals-rationale-link {
+  margin-top: 1rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-accent);
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+}
+
+.goals-rationale-link__hint {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.goals-rationale-panel {
+  border-left: 4px solid var(--color-theme);
+}
+
+.goals-rationale-sections {
+  display: grid;
+  gap: 1rem;
+}
+
+.goals-rationale-section h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.95rem;
+}
+
+.goals-rationale-section__body p {
+  margin: 0 0 0.65rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  font-size: 0.92rem;
+}
+
+.theme-card-list {
+  list-style: none;
+  padding: 0;
   margin: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.theme-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem;
+  background: var(--color-surface-muted);
+}
+
+.theme-card__id {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-border-subtle);
+  color: var(--color-text);
+}
+
+.theme-card__desc {
+  margin: 0.5rem 0 0.35rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.theme-card__captures {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.curiosity-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
 }
 
 .gauge-grid {

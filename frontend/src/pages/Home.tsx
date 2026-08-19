@@ -231,11 +231,7 @@ export default function Home() {
       <section className="queue-section">
         {queueMode === "curiosity" && (
           <div className="curiosity-banner" role="status">
-            <strong>Curiosity mode</strong>
-            <span>
-              Explore lane — queue ranked by intrinsic interest, not goal alignment. Good for
-              generative off-goal reading; switch back to Goals when you want exploit mode.
-            </span>
+            Curiosity mode · Have fun — follow what pulls you.
           </div>
         )}
         <div className="section-header">

@@ -1,13 +1,24 @@
+export interface ParsedTheme {
+  id: string;
+  description: string;
+}
+
 export interface ParsedObjective {
   id: string;
   title: string;
   lines: string[];
 }
 
+export interface ParsedRationaleSection {
+  title: string;
+  body: string;
+}
+
 export interface ParsedGoals {
   cycle: string | null;
+  title: string | null;
   mission: string[];
-  themes: string[];
+  themes: ParsedTheme[];
   objectives: ParsedObjective[];
   curiosity: string[];
   targetMix: Record<string, number>;
@@ -39,6 +50,7 @@ function parseObjectiveLines(rawLines: string[]): string[] {
   }
   return items;
 }
+
 function bulletItems(block: string): string[] {
   return block
     .split("\n")
@@ -48,8 +60,50 @@ function bulletItems(block: string): string[] {
     .filter((line) => line && !line.startsWith("<!--"));
 }
 
+/** Parse `- \`theme/id\` — description` or plain `- theme/id — description`. */
+export function parseThemeLine(line: string): ParsedTheme | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+
+  const rich = trimmed.match(/^`([^`]+)`\s*[—–-]\s*(.+)$/);
+  if (rich) {
+    return { id: rich[1].trim(), description: rich[2].trim() };
+  }
+
+  const plain = trimmed.match(/^([a-z]+\/[\w-]+)\s*[—–-]\s*(.+)$/i);
+  if (plain) {
+    return { id: plain[1].trim(), description: plain[2].trim() };
+  }
+
+  const idOnly = trimmed.replace(/^`|`$/g, "").trim();
+  if (idOnly.includes("/")) {
+    return { id: idOnly, description: "" };
+  }
+
+  return null;
+}
+
+function parseThemes(block: string): ParsedTheme[] {
+  return bulletItems(block)
+    .map(parseThemeLine)
+    .filter((theme): theme is ParsedTheme => theme !== null);
+}
+
+export function parseRationaleMd(md: string): ParsedRationaleSection[] {
+  if (!md.trim()) return [];
+
+  const parts = md.split(/^## /m).slice(1);
+  return parts.map((part) => {
+    const newline = part.indexOf("\n");
+    const title = (newline === -1 ? part : part.slice(0, newline)).trim();
+    const body = (newline === -1 ? "" : part.slice(newline + 1)).trim();
+    return { title, body };
+  });
+}
+
 export function parseGoalsMd(md: string): ParsedGoals {
   const cycleMatch = md.match(/^cycle:\s*(.+)$/m);
+  const titleMatch = md.match(/^#\s+(.+)$/m);
   const mixMatch = md.match(/target_mix:\s*\{([^}]+)\}/);
   const targetMix: Record<string, number> = {};
   if (mixMatch) {
@@ -79,8 +133,9 @@ export function parseGoalsMd(md: string): ParsedGoals {
 
   return {
     cycle: cycleMatch?.[1]?.trim() ?? null,
+    title: titleMatch?.[1]?.trim() ?? null,
     mission: bulletItems(missionBlock),
-    themes: bulletItems(themesBlock),
+    themes: parseThemes(themesBlock),
     objectives,
     curiosity: bulletItems(curiosityBlock),
     targetMix,
