@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from meridian.ingest import arxiv as arxiv_mod
 from meridian.ingest import lesswrong, pdf, transcript, web
 from meridian.ingest.transcript_errors import YouTubeTranscriptBlocked
 
@@ -15,8 +16,11 @@ def fetch_normalized(
     if source_type == "web":
         text, meta = web.fetch_text(ref)
         return text, meta, ref
-    if source_type in {"pdf", "arxiv"}:
+    if source_type == "pdf":
         text, meta = pdf.extract_text(ref)
+        return text, meta, ref
+    if source_type == "arxiv":
+        text, meta = arxiv_mod.fetch_text(ref)
         return text, meta, ref
     if source_type == "youtube":
         try:

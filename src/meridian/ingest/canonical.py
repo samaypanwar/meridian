@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse
 
+from meridian.ingest import arxiv as arxiv_mod
 from meridian.ingest import lesswrong
 from meridian.ingest.normalize import detect_type
 from meridian.ingest.transcript import _video_id_from_url
 
-_ARXIV_ID = re.compile(r"(\d{4}\.\d{4,5})(?:v\d+)?")
 _TRACKING_QUERY_KEYS = frozenset({"fbclid", "ref", "source", "mc_cid", "mc_eid"})
 
 
@@ -27,7 +26,7 @@ def canonical_ref(ref: str) -> str:
             return f"lesswrong:{post_id}"
 
     if source_type == "arxiv":
-        arxiv_id = _arxiv_id_from_ref(stripped)
+        arxiv_id = arxiv_mod.arxiv_id_from_ref(stripped)
         if arxiv_id:
             return f"arxiv:{arxiv_id}"
 
@@ -38,11 +37,6 @@ def canonical_ref(ref: str) -> str:
         return f"pdf:{path}"
 
     return f"web:{_normalize_web_url(stripped)}"
-
-
-def _arxiv_id_from_ref(ref: str) -> str | None:
-    match = _ARXIV_ID.search(ref)
-    return match.group(1) if match else None
 
 
 def _normalize_web_url(url: str) -> str:

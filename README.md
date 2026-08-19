@@ -84,7 +84,7 @@ This is the intended loop:
 | Web article | `https://example.com/post` |
 | Online PDF | `https://…/paper.pdf` (direct `.pdf` URL) |
 | Local PDF | `/Users/you/Downloads/paper.pdf` |
-| arXiv | `https://arxiv.org/abs/2301.12345` |
+| arXiv | `https://arxiv.org/abs/2301.12345` (abstract page; Meridian downloads the PDF) |
 | YouTube | `https://youtube.com/watch?v=…` |
 | LessWrong | `/posts/…` or legacy `/s/…/p/…` URLs |
 
