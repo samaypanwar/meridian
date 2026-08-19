@@ -38,4 +38,7 @@ def chat(
     response = httpx.post(OPENROUTER_URL, headers=headers, json=body, timeout=120.0)
     response.raise_for_status()
     content = response.json()["choices"][0]["message"]["content"]
-    return json.loads(content)
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        return content
