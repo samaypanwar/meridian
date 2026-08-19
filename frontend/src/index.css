@@ -1,0 +1,85 @@
+:root {
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  color: #1a1a1a;
+  background: #f7f5f0;
+}
+
+body {
+  margin: 0;
+}
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+nav a {
+  margin-left: 1rem;
+}
+
+.add-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.add-bar input {
+  flex: 1;
+  padding: 0.5rem;
+}
+
+.queue {
+  list-style: none;
+  padding: 0;
+}
+
+.queue li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.meta {
+  display: block;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.radar {
+  font-size: 0.85rem;
+  color: #444;
+}
+
+.error {
+  color: #a33;
+}
+
+.preview,
+.goals-md {
+  white-space: pre-wrap;
+  background: #fff;
+  padding: 1rem;
+  border: 1px solid #ddd;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+textarea {
+  width: 100%;
+  padding: 0.5rem;
+}
+
+.question {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
