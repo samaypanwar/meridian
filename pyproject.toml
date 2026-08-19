@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "meridian"
+version = "0.1.0"
+description = "Proto experiment: 2026-08-19-meridian"
+authors = ["Samay Panwar <samaybhuvi@gmail.com>"]
+packages = [{ include = "meridian", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.14"
+pydantic-settings = "^2.15.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
