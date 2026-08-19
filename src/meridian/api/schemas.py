@@ -9,6 +9,18 @@ class AddSourceRequest(BaseModel):
     ref: str
 
 
+class CaptureRequest(BaseModel):
+    reflection: str = ""
+
+
+class CaptureApproveRequest(BaseModel):
+    preview: str
+
+
+class GradeRequest(BaseModel):
+    grade: str
+
+
 class SourceResponse(BaseModel):
     id: int
     title: str | None
