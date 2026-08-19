@@ -37,6 +37,16 @@ cd frontend && npm install && cd ..
 
 ### Run (development)
 
+One command (starts API + frontend in a tmux session, or background fallback):
+
+```bash
+./start-meridian.sh
+```
+
+Then open **http://localhost:5173**
+
+Manual setup (two terminals):
+
 Terminal 1 — API on port 8000:
 
 ```bash
@@ -48,8 +58,6 @@ Terminal 2 — UI on port 5173 (proxies `/api` → backend):
 ```bash
 cd frontend && npm run dev
 ```
-
-Open http://localhost:5173
 
 ### First-time embedding model
 
