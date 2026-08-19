@@ -30,6 +30,7 @@ from meridian.review import questions, scheduler
 from meridian.scoring import indicators, queue
 from meridian.store import db
 from meridian.store import repository as repo
+from meridian.store import vault
 
 
 @lru_cache
@@ -119,10 +120,24 @@ def _to_scores_response(scores: Any) -> schemas.ScoresResponse:
     )
 
 
-def _detail(source: Any, scores: Any | None) -> schemas.SourceDetailResponse:
+def _note_path_for_source(conn: Any, source_id: int) -> str | None:
+    row = conn.execute(
+        "SELECT note_path FROM reviews WHERE source_id = ? ORDER BY id DESC LIMIT 1",
+        (source_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    return row["note_path"] or None
+
+
+def _detail(conn: Any, source: Any, scores: Any | None) -> schemas.SourceDetailResponse:
+    note_path = None
+    if source.id is not None and source.status == "captured":
+        note_path = _note_path_for_source(conn, source.id)
     return schemas.SourceDetailResponse(
         source=_to_source_response(source),
         scores=_to_scores_response(scores) if scores else None,
+        note_path=note_path,
     )
 
 
@@ -328,13 +343,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         items = []
         for source in active:
             scores = repo.get_scores(conn, source.id or 0)
-            items.append(_detail(source, scores))
+            items.append(_detail(conn, source, scores))
         pending_items = [
-            _detail(source, repo.get_scores(conn, source.id or 0))
+            _detail(conn, source, repo.get_scores(conn, source.id or 0))
             for source in queue.pending(conn)
         ]
         backlog_items = [
-            _detail(source, repo.get_scores(conn, source.id or 0))
+            _detail(conn, source, repo.get_scores(conn, source.id or 0))
             for source in queue.backlog(conn)
         ]
         return schemas.QueueResponse(
@@ -346,7 +361,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         bundle = repo.source_with_scores(conn, source_id)
         if bundle is None:
             raise HTTPException(status_code=404, detail="Source not found")
-        return _detail(bundle["source"], bundle["scores"])
+        return _detail(conn, bundle["source"], bundle["scores"])
+
+    @app.get("/sources/{source_id}/capture/destination")
+    def capture_destination_route(
+        source_id: int,
+        conn: Any = Depends(get_conn),
+        settings: Settings = Depends(get_settings_from_app),
+    ) -> dict[str, str]:
+        source = repo.get_source(conn, source_id)
+        if source is None:
+            raise HTTPException(status_code=404, detail="Source not found")
+        path = vault.planned_extraction_path(f"source-{source_id}", settings=settings)
+        return {
+            "note_path": str(path),
+            "capture_path": str(settings.capture_path),
+        }
 
     @app.post("/sources/{source_id}/capture")
     def capture_preview_route(
@@ -466,7 +496,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     ) -> dict[str, Any]:
         return {
             "goals_md": _goals_md(),
-            "indicators": indicators.for_cycle(conn, settings.vault_path),
+            "capture_path": str(settings.capture_path),
+            "indicators": indicators.for_cycle(conn, settings.capture_path),
         }
 
     return app

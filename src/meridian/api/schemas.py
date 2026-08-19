@@ -58,6 +58,7 @@ class AddSourceResponse(BaseModel):
 class SourceDetailResponse(BaseModel):
     source: SourceResponse
     scores: ScoresResponse | None = None
+    note_path: str | None = None
 
 
 class QueueResponse(BaseModel):

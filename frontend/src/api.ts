@@ -23,6 +23,7 @@ export interface Scores {
 export interface SourceDetail {
   source: Source;
   scores: Scores | null;
+  note_path?: string | null;
 }
 
 export interface AddSourceResponse {
@@ -121,8 +122,16 @@ export function gradeReview(id: number, grade: string) {
   });
 }
 
+export function getCaptureDestination(id: number) {
+  return request<{ note_path: string; capture_path: string }>(`/sources/${id}/capture/destination`);
+}
+
 export function getGoals() {
-  return request<{ goals_md: string; indicators: Record<string, unknown> }>("/goals");
+  return request<{
+    goals_md: string;
+    capture_path: string;
+    indicators: Record<string, unknown>;
+  }>("/goals");
 }
 
 export interface ReviewItem {

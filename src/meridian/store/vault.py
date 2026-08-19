@@ -7,6 +7,18 @@ from pathlib import Path
 from meridian.config import Settings
 
 
+def planned_extraction_path(
+    slug: str,
+    *,
+    settings: Settings,
+    on_date: date | None = None,
+) -> Path:
+    inbox = settings.capture_path
+    day = (on_date or date.today()).isoformat()
+    safe_slug = slug.strip().lower().replace(" ", "-")
+    return inbox / f"extraction-{day}-{safe_slug}.md"
+
+
 def write_extraction(
     note_md: str,
     slug: str,
@@ -14,18 +26,14 @@ def write_extraction(
     settings: Settings,
     on_date: date | None = None,
 ) -> Path:
-    inbox = settings.vault_path
-    inbox.mkdir(parents=True, exist_ok=True)
-    day = (on_date or date.today()).isoformat()
-    safe_slug = slug.strip().lower().replace(" ", "-")
-    filename = f"extraction-{day}-{safe_slug}.md"
-    path = inbox / filename
+    path = planned_extraction_path(slug, settings=settings, on_date=on_date)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(note_md, encoding="utf-8")
     return path
 
 
 def iter_extractions(*, settings: Settings) -> Iterable[Path]:
-    inbox = settings.vault_path
-    if not inbox.exists():
+    root = settings.capture_path
+    if not root.exists():
         return
-    yield from sorted(inbox.glob("extraction-*.md"))
+    yield from sorted(root.glob("extraction-*.md"))

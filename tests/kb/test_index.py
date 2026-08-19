@@ -8,10 +8,10 @@ from meridian.store import db
 def test_reindex_creates_emb_meta_rows(tmp_path: Path) -> None:
     settings = Settings(
         data_dir=tmp_path / "data",
-        vault_path=tmp_path / "vault" / "00-inbox",
+        capture_path=tmp_path / "vault" / "learnings" / "meridian",
         embed_model="stub",
     )
-    settings.vault_path.mkdir(parents=True)
+    settings.capture_path.mkdir(parents=True)
     note = """---
 type: extraction
 ---
@@ -23,9 +23,9 @@ First capture chunk about RL.
 
 ## Connections
 """
-    (settings.vault_path / "extraction-2026-08-19-alpha.md").write_text(note)
+    (settings.capture_path / "extraction-2026-08-19-alpha.md").write_text(note)
     note2 = note.replace("First capture", "Second capture")
-    (settings.vault_path / "extraction-2026-08-19-beta.md").write_text(note2)
+    (settings.capture_path / "extraction-2026-08-19-beta.md").write_text(note2)
 
     conn = db.connect(settings.db_path)
     db.init_schema(conn)

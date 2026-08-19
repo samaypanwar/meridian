@@ -15,6 +15,14 @@ class Settings(BaseSettings):
     vault_path: Path = Field(
         default=Path.home() / "Documents" / "Obsidian Vault" / "00-inbox"
     )
+    capture_path: Path = Field(
+        default=Path.home()
+        / "Documents"
+        / "Obsidian Vault"
+        / "research"
+        / "learnings"
+        / "meridian"
+    )
     data_dir: Path = Field(default=Path("data"))
     openrouter_api_key: str = ""
     llm_model: str = "google/gemini-2.0-flash-001"

@@ -9,11 +9,11 @@ from meridian.store import db
 def test_believe_returns_relevant_capture(tmp_path: Path) -> None:
     settings = Settings(
         data_dir=tmp_path / "data",
-        vault_path=tmp_path / "vault" / "00-inbox",
+        capture_path=tmp_path / "vault" / "learnings" / "meridian",
         embed_model="stub",
     )
-    settings.vault_path.mkdir(parents=True)
-    (settings.vault_path / "extraction-2026-08-19-rl.md").write_text(
+    settings.capture_path.mkdir(parents=True)
+    (settings.capture_path / "extraction-2026-08-19-rl.md").write_text(
         """---
 type: extraction
 ---
@@ -24,7 +24,7 @@ type: extraction
 Policy gradient increases reward in the direction of the gradient.
 """
     )
-    (settings.vault_path / "extraction-2026-08-19-la.md").write_text(
+    (settings.capture_path / "extraction-2026-08-19-la.md").write_text(
         """---
 type: extraction
 ---

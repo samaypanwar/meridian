@@ -2,7 +2,7 @@ import { useParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import AppShell from "../components/AppShell";
 import StepIndicator from "../components/StepIndicator";
-import { captureApprove, capturePreview, getSource } from "../api";
+import { captureApprove, capturePreview, getCaptureDestination, getSource } from "../api";
 
 export default function CapturePage() {
   const { id } = useParams();
@@ -13,6 +13,8 @@ export default function CapturePage() {
   const [error, setError] = useState<string | null>(null);
   const [objective, setObjective] = useState<string | null>(null);
   const [title, setTitle] = useState<string | null>(null);
+  const [destination, setDestination] = useState<string | null>(null);
+  const [confirmSave, setConfirmSave] = useState(false);
   const [busy, setBusy] = useState<"preview" | "save" | null>(null);
 
   const step = useMemo((): 0 | 1 | 2 => {
@@ -29,6 +31,9 @@ export default function CapturePage() {
         setObjective(detail.scores?.framing?.matters_for_goals ?? null);
       })
       .catch(console.error);
+    getCaptureDestination(Number(id))
+      .then((data) => setDestination(data.note_path))
+      .catch(console.error);
   }, [id]);
 
   async function onPreview() {
@@ -36,6 +41,7 @@ export default function CapturePage() {
     setBusy("preview");
     setError(null);
     setSaved(null);
+    setConfirmSave(false);
     try {
       const result = await capturePreview(Number(id), reflection);
       setShallow(result.shallow);
@@ -48,12 +54,12 @@ export default function CapturePage() {
   }
 
   async function onSave() {
-    if (!id || !preview) return;
+    if (!id || !preview || !confirmSave) return;
     setBusy("save");
     setError(null);
     try {
       const result = await captureApprove(Number(id), preview);
-      setSaved(`${result.status} → ${result.note_path}`);
+      setSaved(result.note_path);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -90,11 +96,6 @@ export default function CapturePage() {
           <button type="button" className="btn btn--primary" onClick={onPreview} disabled={busy !== null}>
             {busy === "preview" ? "Drafting…" : "Draft note"}
           </button>
-          {preview && !shallow && (
-            <button type="button" className="btn btn--primary" onClick={onSave} disabled={busy !== null}>
-              {busy === "save" ? "Saving…" : "Save to vault"}
-            </button>
-          )}
         </div>
       </section>
 
@@ -108,10 +109,40 @@ export default function CapturePage() {
         <section className="panel">
           <h2 className="section-title">Note preview</h2>
           <pre className="preview">{preview}</pre>
+
+          {destination && (
+            <div className="capture-destination">
+              <p className="section-caption">Permanent vault destination (not your weekly inbox)</p>
+              <code className="inline-code capture-destination__path">{destination}</code>
+              <label className="capture-confirm">
+                <input
+                  type="checkbox"
+                  checked={confirmSave}
+                  onChange={(e) => setConfirmSave(e.target.checked)}
+                />
+                Save to this permanent path
+              </label>
+            </div>
+          )}
+
+          <div className="actions">
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={onSave}
+              disabled={busy !== null || !confirmSave}
+            >
+              {busy === "save" ? "Saving…" : "Save to vault"}
+            </button>
+          </div>
         </section>
       )}
 
-      {saved && <p className="success panel">{saved}</p>}
+      {saved && (
+        <p className="success panel">
+          Captured → <code className="inline-code">{saved}</code>
+        </p>
+      )}
       {error && <p className="error">{error}</p>}
     </AppShell>
   );

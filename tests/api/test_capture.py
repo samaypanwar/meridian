@@ -10,7 +10,7 @@ from meridian.config import Settings
 def test_capture_preview_and_shallow(tmp_path) -> None:
     settings = Settings(
         data_dir=tmp_path / "data",
-        vault_path=tmp_path / "vault" / "00-inbox",
+        capture_path=tmp_path / "vault" / "learnings" / "meridian",
         openrouter_api_key="test",
         embed_model="stub",
     )

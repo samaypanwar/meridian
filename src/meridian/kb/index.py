@@ -10,6 +10,7 @@ from sqlite_vec import serialize_float32
 from meridian.config import Settings
 from meridian.kb import embed
 from meridian.store import db
+from meridian.store import vault
 
 
 WHAT_I_TOOK = re.compile(r"## What I took\s*\n(.*?)(?:\n## |\Z)", re.DOTALL)
@@ -29,7 +30,7 @@ def reindex(conn: Any, *, settings: Settings) -> int:
     conn.execute("DELETE FROM emb_meta")
     conn.execute("DELETE FROM emb")
     count = 0
-    for path in sorted(settings.vault_path.glob("extraction-*.md")):
+    for path in vault.iter_extractions(settings=settings):
         count += add_note(conn, path, settings=settings)
     conn.commit()
     return count

@@ -136,10 +136,15 @@ export default function SourceDetailPage() {
 
   if (!detail && !error) return <p>Loading…</p>;
 
-  const { source, scores } = detail ?? { source: null, scores: null };
+  const { source, scores, note_path: notePath } = detail ?? {
+    source: null,
+    scores: null,
+    note_path: null,
+  };
   const framing = scores?.framing ?? {};
   const missingText = !source?.normalized_text;
   const isYoutube = source?.source_type === "youtube";
+  const isCaptured = source?.status === "captured";
   const headline = displayTitle(detail);
   const scoreAxes = scores ? scoreRadarAxes(scores) : null;
   const themeAxes =
@@ -151,30 +156,63 @@ export default function SourceDetailPage() {
     <AppShell back={{ to: "/", label: "← Queue" }}>
       {source && (
         <header className="source-detail__hero">
-          <h1 className="source-detail__title">{headline}</h1>
-          {source.title && source.title !== headline && (
-            <p className="source-detail__raw-title">Original: {source.title}</p>
-          )}
-          <p className="meta source-detail__meta">
-            {source.source_type} · {source.genre} ·{" "}
-            {source.status === "scoring"
-              ? "scoring…"
-              : `priority ${priorityScore(scores).toFixed(1)}`}
-            {scores?.confidence ? ` · ${scores.confidence} confidence` : ""}
-          </p>
-          {source.url && (
-            <a className="source-detail__url" href={source.url} target="_blank" rel="noreferrer">
-              {source.url}
-            </a>
-          )}
+          <div className="source-detail__hero-row">
+            <div className="source-detail__hero-main">
+              <div className="source-detail__title-row">
+                <h1 className="source-detail__title">{headline}</h1>
+                {isCaptured && <span className="badge badge--high">Captured</span>}
+              </div>
+              {source.title && source.title !== headline && (
+                <p className="source-detail__raw-title">Original: {source.title}</p>
+              )}
+              <p className="meta source-detail__meta">
+                {source.source_type} · {source.genre} ·{" "}
+                {source.status === "scoring"
+                  ? "scoring…"
+                  : `priority ${priorityScore(scores).toFixed(1)}`}
+                {scores?.confidence ? ` · ${scores.confidence} confidence` : ""}
+              </p>
+              {source.url && (
+                <a className="source-detail__url" href={source.url} target="_blank" rel="noreferrer">
+                  {source.url}
+                </a>
+              )}
+              {notePath && (
+                <p className="source-detail__vault-path">
+                  Vault note: <code className="inline-code">{notePath}</code>
+                </p>
+              )}
+            </div>
+            <div className="source-detail__toolbar">
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={() => navigate(`/sources/${source.id}/capture`)}
+                disabled={isCaptured}
+              >
+                {isCaptured ? "Captured" : "Capture"}
+              </button>
+              <button type="button" className="btn" onClick={onRefetch} disabled={busy !== null}>
+                {busy === "refetch" ? "Re-fetching…" : "Re-fetch"}
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={onRescore}
+                disabled={busy !== null || missingText}
+              >
+                {busy === "rescore" ? "Re-scoring…" : "Re-score"}
+              </button>
+            </div>
+          </div>
+
           {missingText && isYoutube && (
             <section className="transcript-panel">
               <h2>YouTube transcript unavailable</h2>
               <p className="meta">
                 YouTube blocked automatic caption fetch from this network. Meridian scored
                 from the video title only (low confidence). Paste a transcript below for a
-                proper radar pass — copy from YouTube&apos;s &quot;Show transcript&quot; panel
-                or a caption export tool.
+                proper radar pass.
               </p>
               <textarea
                 value={transcriptDraft}
@@ -200,42 +238,16 @@ export default function SourceDetailPage() {
         </header>
       )}
 
-      {scores && (
-        <section className="framing-panel">
-          <h2 className="section-title">Framing</h2>
-          <p className="section-caption">Director judgment — read this before the radar numbers.</p>
-          <div className="framing-grid">
-            {framing.point && (
-              <article className="framing-card framing-card--primary">
-                <h3>Main point</h3>
-                <p>{framing.point}</p>
-              </article>
-            )}
-            {framing.matters_for_goals && (
-              <article className="framing-card">
-                <h3>Matters for your goals</h3>
-                <p>{framing.matters_for_goals}</p>
-              </article>
-            )}
-            {framing.where_to_focus && (
-              <article className="framing-card">
-                <h3>Where to focus</h3>
-                <p>{framing.where_to_focus}</p>
-              </article>
-            )}
-            {framing.why_now && (
-              <article className="framing-card">
-                <h3>Why now</h3>
-                <p>{framing.why_now}</p>
-              </article>
-            )}
-            {framing.skip_if && (
-              <article className="framing-card framing-card--muted">
-                <h3>Skip if</h3>
-                <p>{framing.skip_if}</p>
-              </article>
-            )}
-          </div>
+      {scores && (framing.point || framing.matters_for_goals) && (
+        <section className="executive-panel panel">
+          <h2 className="section-title">Executive summary</h2>
+          {framing.point && <p className="executive-panel__summary">{framing.point}</p>}
+          {framing.matters_for_goals && (
+            <article className="executive-panel__goals">
+              <h3>How this ties to your goals</h3>
+              <p>{framing.matters_for_goals}</p>
+            </article>
+          )}
         </section>
       )}
 
@@ -247,7 +259,7 @@ export default function SourceDetailPage() {
           </div>
           <div className="radar-panel__grid">
             <div className="radar-panel__chart">
-              <RadarChart labels={scoreAxes.labels} values={scoreAxes.values} />
+              <RadarChart labels={scoreAxes.labels} values={scoreAxes.values} size={220} />
             </div>
             <ul className="radar-panel__legend">
               <li><span>Relevance</span><strong>{scores.relevance}</strong></li>
@@ -272,6 +284,7 @@ export default function SourceDetailPage() {
                 labels={themeAxes.labels}
                 values={themeAxes.values}
                 color="var(--color-radar-theme)"
+                size={200}
               />
             </div>
             <ul className="theme-list">
@@ -293,22 +306,6 @@ export default function SourceDetailPage() {
         </section>
       )}
 
-      <div className="actions actions--source">
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={() => navigate(`/sources/${source?.id}/capture`)}
-          disabled={!source}
-        >
-          Capture
-        </button>
-        <button type="button" className="btn" onClick={onRefetch} disabled={busy !== null}>
-          {busy === "refetch" ? "Re-fetching…" : "Re-fetch & re-score"}
-        </button>
-        <button type="button" className="btn" onClick={onRescore} disabled={busy !== null || missingText}>
-          {busy === "rescore" ? "Re-scoring…" : "Re-score only"}
-        </button>
-      </div>
       {statusMessage && <p className="meta">{statusMessage}</p>}
       {error && <p className="error">{error}</p>}
     </AppShell>
