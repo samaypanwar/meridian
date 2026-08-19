@@ -7,6 +7,11 @@ from pydantic import BaseModel
 
 class AddSourceRequest(BaseModel):
     ref: str
+    transcript: str | None = None
+
+
+class TranscriptRequest(BaseModel):
+    text: str
 
 
 class CaptureRequest(BaseModel):
@@ -43,6 +48,13 @@ class ScoresResponse(BaseModel):
     reading_plan: list[Any] | None = None
 
 
+class AddSourceResponse(BaseModel):
+    source: SourceResponse
+    scores: ScoresResponse | None = None
+    scoring_model: str
+    status_message: str
+
+
 class SourceDetailResponse(BaseModel):
     source: SourceResponse
     scores: ScoresResponse | None = None
@@ -50,3 +62,5 @@ class SourceDetailResponse(BaseModel):
 
 class QueueResponse(BaseModel):
     active: list[SourceDetailResponse]
+    pending: list[SourceDetailResponse] = []
+    backlog: list[SourceDetailResponse] = []

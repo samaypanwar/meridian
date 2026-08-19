@@ -13,12 +13,14 @@ def generate(capture_path: Path | str) -> dict[str, str]:
     objective = _frontmatter_field(text, "objective") or ""
     what_i_took = _section(text, "What I took")
     template = prompts.load("review")
-    filled = template.replace("{{objective}}", objective).replace("{{what_i_took}}", what_i_took)
+    filled = template.replace("{{objective}}", objective).replace(
+        "{{what_i_took}}", what_i_took
+    )
     messages = [
         {"role": "system", "content": _prompt_section(template, "System")},
         {"role": "user", "content": _prompt_section(filled, "User")},
     ]
-    payload = client.chat(messages)
+    payload = client.chat(messages, json_mode=True)
     if "question" not in payload:
         raise ValueError("Malformed review question response")
     return {

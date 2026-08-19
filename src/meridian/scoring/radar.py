@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from typing import Any
 
 from meridian.llm import client, prompts
 from meridian.store.models import Scores, Source
@@ -20,7 +21,7 @@ def score(source: Source, goals_md: str, *, model: str | None = None) -> Scores:
         {"role": "system", "content": _system_prompt(template)},
         {"role": "user", "content": user_block},
     ]
-    payload = client.chat(messages)
+    payload = client.chat(messages, json_mode=True)
     return _parse_scores(source, payload)
 
 
@@ -52,7 +53,7 @@ def _build_user_prompt(template: str, source: Source, goals_md: str) -> str:
     return filled
 
 
-def _parse_scores(source: Source, payload: dict) -> Scores:
+def _parse_scores(source: Source, payload: dict[str, Any]) -> Scores:
     required = {
         "relevance",
         "curiosity",

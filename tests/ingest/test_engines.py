@@ -11,7 +11,9 @@ from meridian.ingest import pdf, transcript, web
 
 
 def test_web_fetch_text_returns_content() -> None:
-    html = "<html><body><article><p>Hello Meridian web text.</p></article></body></html>"
+    html = (
+        "<html><body><article><p>Hello Meridian web text.</p></article></body></html>"
+    )
     with patch("meridian.ingest.web.trafilatura.fetch_url", return_value=html):
         with patch(
             "meridian.ingest.web.trafilatura.extract",
@@ -40,9 +42,13 @@ def test_transcript_fetch_captions_from_fixture() -> None:
     fixture = Path(__file__).parent / "fixtures" / "youtube_captions.json"
     captions = json.loads(fixture.read_text())
     with patch(
-        "meridian.ingest.transcript.YouTubeTranscriptApi.fetch",
-        return_value=captions,
+        "meridian.ingest.transcript.fetch_video_meta",
+        return_value={"title": "RL Talk"},
     ):
-        text, meta = transcript.fetch_captions("https://youtube.com/watch?v=abc")
+        with patch(
+            "meridian.ingest.transcript.YouTubeTranscriptApi.fetch",
+            return_value=captions,
+        ):
+            text, meta = transcript.fetch_captions("https://youtube.com/watch?v=abc")
     assert "policy gradient" in text.lower()
     assert meta["minutes"] > 0

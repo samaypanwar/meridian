@@ -46,9 +46,12 @@ Score the source and frame it. Return STRICT JSON, no prose outside the JSON:
   "theme_breakdown": { "<theme from goals>": 0-10 },
   "confidence": "low|medium|high",
   "framing": {
-    "point": "one sentence: what this source is mainly saying",
-    "matters_for_goals": "which parts matter for THIS user's goals, and why",
-    "where_to_focus": "given the length, where to spend attention"
+    "display_title": "short, representative title (5-12 words) — not the raw page title",
+    "point": "2-3 sentences: what this source is mainly saying",
+    "matters_for_goals": "2-4 sentences: which parts matter for THIS user's goals, and why",
+    "where_to_focus": "2-3 sentences: given the length, where to spend attention",
+    "why_now": "1-2 sentences: why this is worth attention this cycle",
+    "skip_if": "1 sentence: when to deprioritize or skip this source"
   },
   "reading_plan": [
     { "section": "e.g. Ch.3 / §2 / 12:00-24:00", "action": "read|skim|skip", "why": "..." }

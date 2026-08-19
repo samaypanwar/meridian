@@ -34,6 +34,17 @@ def backlog(conn: sqlite3.Connection) -> list[Source]:
     return [source_from_row(row) for row in ranked[10:]]
 
 
+def pending(conn: sqlite3.Connection) -> list[Source]:
+    rows = conn.execute(
+        """
+        SELECT * FROM sources
+        WHERE status = 'scoring'
+        ORDER BY added_at DESC
+        """
+    ).fetchall()
+    return [source_from_row(row) for row in rows]
+
+
 def _queued_rows(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     rows = conn.execute(
         """

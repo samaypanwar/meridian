@@ -26,8 +26,22 @@ Policy gradient estimates direction of improvement.
 """
     app = create_app(settings)
     with TestClient(app) as client:
-        with patch("meridian.api.app.web.fetch_text", return_value=("text", {"words": 10})):
-            with patch("meridian.scoring.radar.client.chat", return_value=_radar_payload()):
+        with patch(
+            "meridian.api.app.fetch_normalized",
+            return_value=(
+                "text",
+                {"title": "Article", "words": 10},
+                "https://example.com",
+            ),
+        ):
+            with patch("meridian.api.scoring_worker.radar.score") as mock_score:
+                from meridian.scoring.radar import _parse_scores
+                from meridian.store.models import Source
+
+                def fake_score(source: Source, goals_md: str, **_: object):
+                    return _parse_scores(source, _radar_payload())
+
+                mock_score.side_effect = fake_score
                 created = client.post("/sources", json={"ref": "https://example.com/x"})
         source_id = created.json()["source"]["id"]
 
@@ -48,7 +62,10 @@ Policy gradient estimates direction of improvement.
             )
         assert "What I took" in preview.json()["preview"]
 
-        with patch("meridian.review.questions.client.chat", return_value={"question": "Q?", "ideal_answer_hint": "A"}):
+        with patch(
+            "meridian.review.questions.client.chat",
+            return_value={"question": "Q?", "ideal_answer_hint": "A"},
+        ):
             approved = client.post(
                 f"/sources/{source_id}/capture/approve",
                 json={"preview": preview.json()["preview"]},
