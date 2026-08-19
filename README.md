@@ -59,9 +59,9 @@ query text is never sent to HuggingFace during search.
 
 ---
 
-## Using Meridian (new user)
+## Using Meridian
 
-This is the intended loop for anyone starting fresh:
+This is the intended loop:
 
 1. **Edit `goals.md`** — your quarterly mission, themes, and objectives. This is
    the highest-leverage file; scoring reads it on every add.
@@ -89,72 +89,6 @@ This is the intended loop for anyone starting fresh:
 | LessWrong | `/posts/…` or legacy `/s/…/p/…` URLs |
 
 Duplicates are rejected before fetch (HTTP 409) using a canonical key per platform.
-
----
-
-## How this repo is used today (operator workflow)
-
-This section describes the **current personal setup** and why it differs slightly
-from a generic first-time user flow.
-
-### Goals-first, Q3 2026 cycle
-
-The live `goals.md` drives everything: themes like `frontier/agentic-harnesses`,
-`applied/data-science`, `foundations/rl`, and `meta/rationality-and-craft`.
-Sources are scored for **relevance to those themes**, not generic “importance.”
-
-**Why:** Meridian is an experiment in running a reading practice like a quarterly
-OKR — the queue is a prioritization tool, not a bookmark manager.
-
-### Two queue modes
-
-- **Goals mode** (default) — `priority = relevance × urgency / effort`
-- **Curiosity mode** — ranks by intrinsic curiosity when exploring without guilt
-
-**Why:** Some weeks are for disciplined OKR reading; others are for following
-interest. Same queue, different sort.
-
-### Filters + local semantic search
-
-The Home queue supports platform/theme filters and a search box. Search is:
-
-- **Local only** — MiniLM embeddings + sqlite-vec over indexed queue chunks
-- **No LLM on search** today — `MERIDIAN_SEARCH_CAPTURES_ENABLED=false`
-
-The optional “Already captured” RAG panel (vector retrieve + OpenRouter synthesis
-from vault notes) exists but is **disabled** for speed until captures accumulate.
-
-**Why:** With ~30+ queued sources, vector search over the queue is the daily need;
-vault RAG is for later when extractions exist under `capture_path`.
-
-### Permanent capture path
-
-Captures go to:
-
-`~/Documents/Obsidian Vault/research/learnings/meridian/`
-
-—not the weekly inbox vault. Inbox is for transient notes; captures are the
-compounding asset.
-
-**Why:** Extractions should survive inbox cleanup and stay browsable in Obsidian.
-
-### Bulk ingest + dedupe
-
-Sources are added in batches (papers, LessWrong posts, YouTube talks). Canonical
-dedupe prevents re-scoring the same URL. After large adds, run **reindex** once
-so search stays useful.
-
-**Why:** Re-ingesting duplicates wastes LLM calls and clutters the queue; reindex
-is cheap compared to re-scoring.
-
-### LLM vs local (what leaves your machine)
-
-| Operation | Where it runs |
-|-----------|----------------|
-| Radar scoring, framing, capture draft, review questions | OpenRouter (configurable model) |
-| Embeddings (search + reindex) | Local CPU, cached MiniLM model |
-| Vector search | Local SQLite + sqlite-vec |
-| Vault RAG answer (“Already captured”) | Local retrieve + OpenRouter generate *(off by default)* |
 
 ---
 
