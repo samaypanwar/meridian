@@ -5,6 +5,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from sqlite_vec import serialize_float32
+
 from meridian.config import Settings
 from meridian.kb import embed
 from meridian.store import db
