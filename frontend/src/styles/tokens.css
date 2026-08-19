@@ -1,0 +1,97 @@
+:root,
+[data-theme="classic"] {
+  color-scheme: light;
+
+  /* Meridian Classic — default Frontend 2.0 palette */
+  --color-bg: #f7f5f0;
+  --color-surface: #ffffff;
+  --color-surface-muted: #fafafa;
+  --color-text: #1a1a1a;
+  --color-text-secondary: #555555;
+  --color-text-muted: #888888;
+  --color-border: #e0ddd6;
+  --color-border-subtle: #eeecea;
+
+  --color-accent: #4e79a7;
+  --color-accent-hover: #3d6288;
+  --color-accent-soft: #eef3f9;
+
+  --color-success: #59a14f;
+  --color-success-soft: #edf7ed;
+  --color-success-text: #2d6a32;
+  --color-warning: #f28e2b;
+  --color-warning-soft: #fff8e6;
+  --color-warning-text: #9a7b00;
+  --color-warning-border: #e6d7a5;
+  --color-danger: #c0392b;
+  --color-danger-soft: #fdeeee;
+
+  --color-theme: #76b7b2;
+  --color-theme-soft: #edfafa;
+
+  --color-radar: #4e79a7;
+  --color-radar-theme: #59a14f;
+  --color-radar-grid: #d4d4d4;
+  --color-radar-axis: #e8e8e8;
+
+  --color-track: #eeeeee;
+  --color-nav-hover: #f0f0f0;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+
+  --shadow-card: 0 1px 3px rgba(26, 26, 26, 0.04);
+  --shadow-card-hover: 0 4px 12px rgba(26, 26, 26, 0.07);
+  --shadow-review: 0 2px 12px rgba(0, 0, 0, 0.04);
+
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --width-page: 860px;
+  --width-narrow: 640px;
+  --width-review: 560px;
+}
+
+[data-theme="ink"] {
+  color-scheme: dark;
+
+  --color-bg: #1e1e2e;
+  --color-surface: #313244;
+  --color-surface-muted: #2a2a3c;
+  --color-text: #cdd6f4;
+  --color-text-secondary: #a6adc8;
+  --color-text-muted: #6c7086;
+  --color-border: #45475a;
+  --color-border-subtle: #3b3d4f;
+
+  --color-accent: #89b4fa;
+  --color-accent-hover: #b4befe;
+  --color-accent-soft: rgba(137, 180, 250, 0.14);
+
+  --color-success: #a6e3a1;
+  --color-success-soft: rgba(166, 227, 161, 0.12);
+  --color-success-text: #a6e3a1;
+  --color-warning: #fab387;
+  --color-warning-soft: rgba(250, 179, 135, 0.12);
+  --color-warning-text: #fab387;
+  --color-warning-border: rgba(250, 179, 135, 0.35);
+  --color-danger: #f38ba8;
+  --color-danger-soft: rgba(243, 139, 168, 0.12);
+
+  --color-theme: #94e2d5;
+  --color-theme-soft: rgba(148, 226, 213, 0.12);
+
+  --color-radar: #89b4fa;
+  --color-radar-theme: #a6e3a1;
+  --color-radar-grid: #45475a;
+  --color-radar-axis: #585b70;
+
+  --color-track: #45475a;
+  --color-nav-hover: #3b3d4f;
+
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-review: 0 2px 16px rgba(0, 0, 0, 0.3);
+}

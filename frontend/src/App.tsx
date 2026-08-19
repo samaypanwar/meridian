@@ -4,6 +4,7 @@ import SourceDetail from "./pages/SourceDetail";
 import Capture from "./pages/Capture";
 import Review from "./pages/Review";
 import Goals from "./pages/Goals";
+import Knowledge from "./pages/Knowledge";
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="/sources/:id/capture" element={<Capture />} />
         <Route path="/review" element={<Review />} />
         <Route path="/goals" element={<Goals />} />
+        <Route path="/knowledge" element={<Knowledge />} />
       </Routes>
     </BrowserRouter>
   );

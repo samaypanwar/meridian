@@ -25,8 +25,17 @@ export interface SourceDetail {
   scores: Scores | null;
 }
 
+export interface AddSourceResponse {
+  source: Source;
+  scores: Scores | null;
+  scoring_model: string;
+  status_message: string;
+}
+
 export interface QueueResponse {
   active: SourceDetail[];
+  pending: SourceDetail[];
+  backlog: SourceDetail[];
 }
 
 const BASE = "/api";
@@ -37,20 +46,46 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   if (!resp.ok) {
-    throw new Error(await resp.text());
+    const raw = await resp.text();
+    try {
+      const parsed = JSON.parse(raw) as { detail?: string };
+      if (typeof parsed.detail === "string") {
+        throw new Error(parsed.detail);
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message !== raw) {
+        throw error;
+      }
+    }
+    throw new Error(raw);
   }
   return resp.json() as Promise<T>;
 }
 
-export function addSource(ref: string) {
-  return request<SourceDetail>("/sources", {
+export function addSource(ref: string, transcript?: string) {
+  return request<AddSourceResponse>("/sources", {
     method: "POST",
-    body: JSON.stringify({ ref }),
+    body: JSON.stringify({ ref, transcript: transcript?.trim() || undefined }),
   });
 }
 
 export function getQueue() {
   return request<QueueResponse>("/queue");
+}
+
+export function refetchSource(id: number) {
+  return request<AddSourceResponse>(`/sources/${id}/refetch`, { method: "POST" });
+}
+
+export function rescoreSource(id: number) {
+  return request<AddSourceResponse>(`/sources/${id}/rescore`, { method: "POST" });
+}
+
+export function pasteTranscript(id: number, text: string) {
+  return request<AddSourceResponse>(`/sources/${id}/transcript`, {
+    method: "POST",
+    body: JSON.stringify({ text }),
+  });
 }
 
 export function getSource(id: number) {
@@ -97,7 +132,19 @@ export interface ReviewItem {
   source_id: number | null;
 }
 
+export function displayTitle(item: SourceDetail): string {
+  const framingTitle = item.scores?.framing?.display_title;
+  if (typeof framingTitle === "string" && framingTitle.trim()) {
+    return framingTitle.trim();
+  }
+  return item.source.title ?? item.source.url ?? "Untitled source";
+}
+
 export function priorityScore(scores: Scores | null): number {
   if (!scores?.relevance || !scores.urgency0 || !scores.effort) return 0;
   return (scores.relevance * scores.urgency0) / scores.effort;
+}
+
+export function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
