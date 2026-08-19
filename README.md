@@ -1,82 +1,324 @@
 # Meridian
 
-A learning director, not a summarizer.
+A goal-aware reading queue — not a summarizer.
 
-Meridian tells you what's worth your attention (scored against your own goals),
-then makes sure you actually keep what you learned. It replaces the unbounded
-pile of open tabs with a bounded, goal-aware queue, a forced capture after every
-source, and spaced review that quizzes you from your own notes.
+Meridian scores sources against **your** quarterly goals, ranks a bounded queue,
+forces capture after you read, and resurfaces what you kept via spaced review.
+It replaces an unbounded pile of tabs with a deliberate learning loop.
 
-## The problem it solves
+## What problem it solves
 
-Information piles up faster than you consume it, you read things at the wrong
-depth out of habit, and a week later you have recognition instead of knowledge.
-Meridian attacks both: the **overload** (a bounded queue, ranked by fit to your
-goals) and the **shallow retention** (capture + spaced retrieval).
+Information arrives faster than you can consume it. You read at the wrong depth,
+and a week later you have recognition instead of knowledge. Meridian targets both:
 
-## The loop
+- **Overload** — a bounded, ranked queue aligned to `goals.md`
+- **Shallow retention** — capture → Obsidian extraction notes → spaced quiz
 
-```mermaid
-flowchart TD
-  A["1. Add a source (URL / PDF / arXiv / YouTube)"] --> B["2. Cheap pass: radar score vs goals + what/why"]
-  B --> Q["Pure-priority backlog; visible active list (~10)"]
-  Q --> R["You read / watch it yourself"]
-  R --> E["3. Capture: 'what did I take?'"]
-  E -->|"blank -> shallow/revisit"| Q
-  E --> F["4. Extraction note -> Obsidian vault"]
-  F --> G["5. Resurface: spaced quiz from your own note"]
-  G -->|"keep missing -> revisit"| Q
-  goals["goals.md (quarterly OKR)"] -.-> B
-  R -.->|"leading indicators"| goals
+---
+
+## Quick start
+
+### Prerequisites
+
+- **Python 3.14** (Poetry-managed; do not use a global pip venv)
+- **Node.js 18+** (frontend)
+- **OpenRouter API key** (for scoring, capture drafting, and review questions)
+
+### Setup
+
+```bash
+git clone <repo-url> && cd meridian
+cp .env.example .env
+# Edit .env — at minimum set MERIDIAN_OPENROUTER_API_KEY
+
+poetry install
+cd frontend && npm install && cd ..
 ```
 
-## Design commitments
+### Run (development)
 
-- **Objective-first.** Every source is scored against your goals before it earns
-  a slot. Depth follows the objective, never habit.
-- **Bounded visible queue.** The active list holds ~10 items; the backlog stays
-  out of sight. An unbounded visible queue just recreates the open-tabs problem.
-- **Extractions are the asset.** Sources are re-fetchable and disposable;
-  what you took from them is not. Captures are the compounding knowledge base.
-- **Layered storage.** Irreplaceable, human-authored data (goals, extractions)
-  lives as plain markdown in your Obsidian vault. Operational state (queue,
-  scores, review schedule, search index) lives in SQLite and is always
-  rebuildable from the markdown.
+Terminal 1 — API on port 8000:
 
-## Stack
+```bash
+poetry run python -m meridian.main
+```
 
-- Backend: FastAPI (Python 3.14, Poetry)
-- LLM: a thin, swappable client defaulting to OpenRouter (Kimi / DeepSeek /
-  Gemini Flash / Claude / etc.) for scoring, framing, capture, and questions
-- Search: SQLite + a small local embedding model (`sqlite-vec`), embeddings free
-- Frontend: minimal React (add box, active list, source detail with radar,
-  capture form, reviews-due view)
+Terminal 2 — UI on port 5173 (proxies `/api` → backend):
 
-## Repository layout
+```bash
+cd frontend && npm run dev
+```
+
+Open http://localhost:5173
+
+### First-time embedding model
+
+The first search or reindex downloads `all-MiniLM-L6-v2` (~90MB) from HuggingFace
+into `~/.cache/huggingface/`. After that, embeddings run **fully locally** — your
+query text is never sent to HuggingFace during search.
+
+---
+
+## Using Meridian (new user)
+
+This is the intended loop for anyone starting fresh:
+
+1. **Edit `goals.md`** — your quarterly mission, themes, and objectives. This is
+   the highest-leverage file; scoring reads it on every add.
+2. **Add a source** on Home — paste a web URL, direct PDF link, local PDF path,
+   arXiv abstract URL, or YouTube link.
+3. **Wait for scoring** — Meridian fetches text, calls the LLM for radar scores
+   + framing, then places the source in your queue.
+4. **Work the queue** — top ~10 items are “active”; the rest is backlog. Open a
+   source, read/watch it yourself (Meridian does not summarize for you).
+5. **Capture** — after reading, write what you took. Blank capture → shallow /
+   revisit. Good capture → LLM-drafted extraction note preview → approve to vault.
+6. **Review** — spaced questions generated from your own notes.
+7. **Reindex** (when you want search) — `POST /reindex` or trigger from the UI
+   builds local vector embeddings over queue source text.
+
+**Supported inputs**
+
+| Input | Example |
+|-------|---------|
+| Web article | `https://example.com/post` |
+| Online PDF | `https://…/paper.pdf` (direct `.pdf` URL) |
+| Local PDF | `/Users/you/Downloads/paper.pdf` |
+| arXiv | `https://arxiv.org/abs/2301.12345` |
+| YouTube | `https://youtube.com/watch?v=…` |
+| LessWrong | `/posts/…` or legacy `/s/…/p/…` URLs |
+
+Duplicates are rejected before fetch (HTTP 409) using a canonical key per platform.
+
+---
+
+## How this repo is used today (operator workflow)
+
+This section describes the **current personal setup** and why it differs slightly
+from a generic first-time user flow.
+
+### Goals-first, Q3 2026 cycle
+
+The live `goals.md` drives everything: themes like `frontier/agentic-harnesses`,
+`applied/data-science`, `foundations/rl`, and `meta/rationality-and-craft`.
+Sources are scored for **relevance to those themes**, not generic “importance.”
+
+**Why:** Meridian is an experiment in running a reading practice like a quarterly
+OKR — the queue is a prioritization tool, not a bookmark manager.
+
+### Two queue modes
+
+- **Goals mode** (default) — `priority = relevance × urgency / effort`
+- **Curiosity mode** — ranks by intrinsic curiosity when exploring without guilt
+
+**Why:** Some weeks are for disciplined OKR reading; others are for following
+interest. Same queue, different sort.
+
+### Filters + local semantic search
+
+The Home queue supports platform/theme filters and a search box. Search is:
+
+- **Local only** — MiniLM embeddings + sqlite-vec over indexed queue chunks
+- **No LLM on search** today — `MERIDIAN_SEARCH_CAPTURES_ENABLED=false`
+
+The optional “Already captured” RAG panel (vector retrieve + OpenRouter synthesis
+from vault notes) exists but is **disabled** for speed until captures accumulate.
+
+**Why:** With ~30+ queued sources, vector search over the queue is the daily need;
+vault RAG is for later when extractions exist under `capture_path`.
+
+### Permanent capture path
+
+Captures go to:
+
+`~/Documents/Obsidian Vault/research/learnings/meridian/`
+
+—not the weekly inbox vault. Inbox is for transient notes; captures are the
+compounding asset.
+
+**Why:** Extractions should survive inbox cleanup and stay browsable in Obsidian.
+
+### Bulk ingest + dedupe
+
+Sources are added in batches (papers, LessWrong posts, YouTube talks). Canonical
+dedupe prevents re-scoring the same URL. After large adds, run **reindex** once
+so search stays useful.
+
+**Why:** Re-ingesting duplicates wastes LLM calls and clutters the queue; reindex
+is cheap compared to re-scoring.
+
+### LLM vs local (what leaves your machine)
+
+| Operation | Where it runs |
+|-----------|----------------|
+| Radar scoring, framing, capture draft, review questions | OpenRouter (configurable model) |
+| Embeddings (search + reindex) | Local CPU, cached MiniLM model |
+| Vector search | Local SQLite + sqlite-vec |
+| Vault RAG answer (“Already captured”) | Local retrieve + OpenRouter generate *(off by default)* |
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TB
+  subgraph ui [Frontend — React + Vite]
+    Home[Home — add, queue, filters, search]
+    Detail[Source detail — radar, framing]
+    Capture[Capture flow]
+    Review[Review due]
+    Goals[Goals viewer]
+  end
+
+  subgraph api [Backend — FastAPI]
+    Routes[api/app.py]
+    Worker[scoring_worker — async LLM score]
+  end
+
+  subgraph core [Core modules]
+    Ingest[ingest/ — web, pdf, youtube, lesswrong]
+    Score[scoring/ — radar + priority queue]
+    Store[store/ — SQLite, vault, blobs]
+    KB[kb/ — embed, index, search]
+    ReviewM[review/ — scheduler, questions]
+    LLM[llm/client.py — OpenRouter]
+  end
+
+  subgraph data [Data]
+    GoalsMd[goals.md]
+    Vault[(Obsidian vault — extractions)]
+    DB[(data/meridian.db — queue, scores, vectors)]
+  end
+
+  ui --> Routes
+  Routes --> Ingest
+  Routes --> Score
+  Routes --> Store
+  Routes --> KB
+  Routes --> ReviewM
+  Score --> LLM
+  ReviewM --> LLM
+  KB --> Store
+  Store --> DB
+  Store --> Vault
+  Score --> GoalsMd
+  Vault --> KB
+```
+
+### Storage layers
+
+| Layer | Location | Role |
+|-------|----------|------|
+| **Goals** | `goals.md` (repo root) | Human-authored OKR doc; source of truth for scoring |
+| **Extractions** | Obsidian vault (`MERIDIAN_CAPTURE_PATH`) | Permanent capture notes; compounding knowledge |
+| **Operational** | `data/meridian.db` | Queue, scores, review schedule, embedding index — rebuildable except reviews/overrides |
+| **Binaries** | `data/documents/` | Optional PDF blobs (gitignored) |
+
+### Key backend modules
+
+```
+src/meridian/
+  ingest/       Normalize URLs/paths; fetch text (web, PDF, YouTube, LessWrong)
+  scoring/      LLM radar scores + priority queue ranking
+  store/        SQLite schema, repository, vault I/O
+  kb/           Chunk → embed → sqlite-vec; unified search
+  review/       Spaced repetition scheduler + question generation
+  llm/          Thin OpenRouter client (all chat calls)
+  api/          FastAPI routes + background scoring worker
+frontend/       React UI (Home, Source, Capture, Review, Goals, Knowledge)
+```
+
+### The learning loop
+
+```mermaid
+flowchart LR
+  A[Add source] --> B[Fetch + score vs goals]
+  B --> C[Ranked queue]
+  C --> D[You read]
+  D --> E[Capture]
+  E --> F[Vault note]
+  F --> G[Reindex]
+  G --> H[Search / review]
+  H --> C
+```
+
+---
+
+## Configuration
+
+Copy `.env.example` → `.env`. All settings use the `MERIDIAN_` prefix.
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `MERIDIAN_OPENROUTER_API_KEY` | *(required)* | LLM API key for scoring, capture, review |
+| `MERIDIAN_LLM_MODEL` | `google/gemini-2.0-flash-001` | OpenRouter model id |
+| `MERIDIAN_EMBED_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | Local embedding model (`stub` for tests) |
+| `MERIDIAN_DATA_DIR` | `data` | SQLite + documents directory |
+| `MERIDIAN_VAULT_PATH` | `~/Documents/Obsidian Vault/00-inbox` | Legacy inbox path |
+| `MERIDIAN_CAPTURE_PATH` | `~/…/research/learnings/meridian` | Permanent extraction destination |
+| `MERIDIAN_SEARCH_CAPTURES_ENABLED` | `false` | Enable vault RAG panel in search (LLM call) |
+
+Restart the API after changing `.env`.
+
+---
+
+## Development
+
+```bash
+# Backend tests (71 tests)
+poetry run pytest -q
+
+# Frontend typecheck + production build
+cd frontend && npm run build
+```
+
+**Conventions**
+
+- Python managed with **Poetry only** (`poetry run …`, not global pip)
+- All LLM calls go through `src/meridian/llm/client.py`
+- Embeddings are always local — never via OpenRouter
+- Markdown (goals + extractions) is source of truth; SQLite is derived
+
+---
+
+## Project layout
 
 ```
 meridian/
-  README.md                 you are here
-  goals.md                  living OKR goals doc (the highest-leverage file)
+  README.md                 This file
+  goals.md                  Living OKR goals (edit often)
+  goals-rationale.md        Why the current goals are shaped this way
+  .env.example              Environment template
+  src/meridian/             Python application
+  frontend/                 React + Vite UI
+  tests/                    Pytest suite
   docs/
-    2026-08-19-vision.md    why Meridian exists (the thesis)
-    2026-08-19-spec.md      what it does (functional spec)
-    2026-08-19-architecture.md   how it is built (technical design)
-    2026-08-19-plan.md      build order (bite-sized TDD tasks)
-    prompts/                runtime LLM system prompts
-  src/meridian/             application code
-  tests/                    tests
+    2026-08-19-vision.md    Why Meridian exists
+    2026-08-19-spec.md      Functional behavior
+    2026-08-19-architecture.md   Detailed technical design
+    2026-08-19-plan.md      Build milestones (historical)
+    prompts/                LLM system prompts used at runtime
+  data/                     gitignored — meridian.db, documents/
 ```
 
-## Status
-
-MVP in design. Guided in-source reading, the allocation dashboard, queue
-lane-mixing, podcast transcription, and multi-user support are explicitly
-deferred (see the spec's "Deferred scope").
+---
 
 ## Documentation
 
-- Start with the [vision](docs/2026-08-19-vision.md) for the "why".
-- Read the [spec](docs/2026-08-19-spec.md) for precise behavior.
-- Read the [architecture](docs/2026-08-19-architecture.md) for the technical design.
-- Follow the [plan](docs/2026-08-19-plan.md) to build it.
+- [Vision](docs/2026-08-19-vision.md) — the thesis
+- [Spec](docs/2026-08-19-spec.md) — precise behavior
+- [Architecture](docs/2026-08-19-architecture.md) — module boundaries, schema, flows
+
+---
+
+## Status
+
+**MVP is running** — ingest, scoring, bounded queue, capture, review, local semantic
+search, dedupe, and queue filters are implemented. Deferred: guided in-source
+reading, allocation dashboard, podcast transcription, multi-user auth.
+
+---
+
+## License
+
+Private experiment — see repository owner for usage terms.

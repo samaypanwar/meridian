@@ -30,7 +30,7 @@ def _radar_payload() -> dict:
     }
 
 
-def test_search_returns_queue_and_capture_sections(tmp_path) -> None:
+def test_search_returns_queue_matches_without_captures_by_default(tmp_path) -> None:
     settings = Settings(
         data_dir=tmp_path / "data",
         vault_path=tmp_path / "vault" / "00-inbox",
@@ -74,7 +74,7 @@ Belief about policy gradient variance.
 
     app = create_app(settings)
     with TestClient(app) as client:
-        with patch("meridian.kb.query.client.chat", return_value="You believe variance matters."):
+        with patch("meridian.kb.query.client.chat") as mock_chat:
             resp = client.get("/search", params={"q": "policy gradient variance"})
 
     assert resp.status_code == 200
@@ -82,6 +82,60 @@ Belief about policy gradient variance.
     assert data["query"] == "policy gradient variance"
     assert len(data["queue"]) >= 1
     assert data["queue"][0]["source"]["title"] == "RL Talk"
+    assert data["captures"]["text"] == ""
+    assert data["captures"]["citations"] == []
+    mock_chat.assert_not_called()
+
+
+def test_search_includes_captures_when_enabled(tmp_path) -> None:
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        vault_path=tmp_path / "vault" / "00-inbox",
+        capture_path=tmp_path / "vault" / "learnings" / "meridian",
+        openrouter_api_key="test",
+        embed_model="stub",
+        search_captures_enabled=True,
+    )
+    settings.capture_path.mkdir(parents=True)
+    (settings.capture_path / "extraction-2026-08-19-alpha.md").write_text(
+        """---
+type: extraction
+---
+
+# Note
+
+## What I took
+Belief about policy gradient variance.
+"""
+    )
+    conn = setup_db(settings.db_path)
+    source_id = insert_source_with_scores(
+        conn,
+        title="RL Talk",
+        relevance=8.0,
+        urgency0=5.0,
+        effort=1.0,
+    )
+    conn.execute(
+        "UPDATE sources SET normalized_text = ? WHERE id = ?",
+        ("Policy gradient variance reduction techniques.", source_id),
+    )
+    conn.commit()
+
+    from meridian.kb import index as kb_index
+
+    kb_index.reindex(conn, settings=settings)
+
+    app = create_app(settings)
+    with TestClient(app) as client:
+        with patch(
+            "meridian.kb.query.client.chat",
+            return_value="You believe variance matters.",
+        ):
+            resp = client.get("/search", params={"q": "policy gradient variance"})
+
+    assert resp.status_code == 200
+    data = resp.json()
     assert "variance" in data["captures"]["text"].lower()
 
 

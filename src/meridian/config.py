@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     llm_model: str = "google/gemini-2.0-flash-001"
     embed_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    search_captures_enabled: bool = False
 
     @field_validator("vault_path", "capture_path", "data_dir", mode="before")
     @classmethod

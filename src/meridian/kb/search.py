@@ -62,10 +62,17 @@ def unified(
         return UnifiedSearchResult(
             query="",
             queue_source_ids=[],
-            captures=Answer(text="No captures found.", citations=[]),
+            captures=Answer(text="", citations=[]),
         )
+    captures = (
+        query.believe(conn, trimmed, settings=settings)
+        if settings.search_captures_enabled
+        else Answer(text="", citations=[])
+    )
     return UnifiedSearchResult(
         query=trimmed,
-        queue_source_ids=queue_source_ids(conn, trimmed, settings=settings, limit=limit),
-        captures=query.believe(conn, trimmed, settings=settings),
+        queue_source_ids=queue_source_ids(
+            conn, trimmed, settings=settings, limit=limit
+        ),
+        captures=captures,
     )
