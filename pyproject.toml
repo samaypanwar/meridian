@@ -6,10 +6,13 @@ authors = ["Samay Panwar <samaybhuvi@gmail.com>"]
 packages = [{ include = "meridian", from = "src" }]
 
 [tool.poetry.dependencies]
-python = "^3.14"
+python = ">=3.14,<3.15"
 pydantic-settings = "^2.15.0"
 sqlite-vec = "^0.1.9"
 pysqlite3 = "^0.6.0"
+trafilatura = "^2.2.0"
+pymupdf = "^1.28.2"
+youtube-transcript-api = "^1.2.4"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
