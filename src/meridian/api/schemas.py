@@ -65,3 +65,4 @@ class QueueResponse(BaseModel):
     active: list[SourceDetailResponse]
     pending: list[SourceDetailResponse] = []
     backlog: list[SourceDetailResponse] = []
+    mode: str = "goals"

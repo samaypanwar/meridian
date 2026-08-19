@@ -372,6 +372,40 @@ button:disabled {
   color: var(--red);
 }
 
+.badge--curiosity {
+  background: var(--color-theme-soft);
+  color: var(--color-theme);
+}
+
+.curiosity-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-theme);
+  border-radius: var(--radius-md);
+  background: var(--color-theme-soft);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.curiosity-banner strong {
+  color: var(--color-theme);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.curiosity-banner span {
+  color: var(--color-text-secondary);
+}
+
+.queue-controls__btn--curiosity.queue-controls__btn--active {
+  background: var(--color-theme-soft);
+  color: var(--color-theme);
+}
+
 .theme-chips {
   list-style: none;
   padding: 0;

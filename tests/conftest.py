@@ -15,6 +15,7 @@ def insert_source_with_scores(
     effort: float,
     decay_lambda: float = 0.0,
     manual_rank: float | None = None,
+    curiosity: float = 5.0,
 ) -> int:
     cur = conn.execute(
         """
@@ -27,11 +28,11 @@ def insert_source_with_scores(
     conn.execute(
         """
         INSERT INTO scores (
-          source_id, relevance, urgency0, effort, decay_lambda,
+          source_id, relevance, urgency0, effort, curiosity, decay_lambda,
           theme_breakdown, confidence, scored_at
-        ) VALUES (?, ?, ?, ?, ?, '{}', 'high', datetime('now'))
+        ) VALUES (?, ?, ?, ?, ?, ?, '{}', 'high', datetime('now'))
         """,
-        (source_id, relevance, urgency0, effort, decay_lambda),
+        (source_id, relevance, urgency0, effort, curiosity, decay_lambda),
     )
     if manual_rank is not None:
         conn.execute(

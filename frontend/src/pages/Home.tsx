@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import AppShell from "../components/AppShell";
 import CycleStrip from "../components/CycleStrip";
 import SourceCard from "../components/SourceCard";
+import QueueModeToggle from "../components/QueueModeToggle";
 import {
   addSource,
   getGoals,
@@ -9,8 +10,10 @@ import {
   getSource,
   sleep,
   type AddSourceResponse,
+  type QueueMode,
   type SourceDetail,
 } from "../api";
+import { getStoredQueueMode, setStoredQueueMode } from "../lib/queueMode";
 
 interface PendingAdd {
   id: number;
@@ -38,6 +41,7 @@ export default function Home() {
   const [cyclePassRate, setCyclePassRate] = useState(0);
   const [queueView, setQueueView] = useState<QueueView>("grid");
   const [pageSize, setPageSize] = useState<PageSize>(10);
+  const [queueMode, setQueueMode] = useState<QueueMode>(() => getStoredQueueMode());
   const [page, setPage] = useState(0);
   const pollTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
@@ -52,7 +56,7 @@ export default function Home() {
   }, []);
 
   const refresh = useCallback(async () => {
-    const data = await getQueue();
+    const data = await getQueue(queueMode);
     setActive(data.active);
     setBacklog(data.backlog ?? []);
     setPendingAdds((current) => {
@@ -74,7 +78,7 @@ export default function Home() {
       }
       return merged;
     });
-  }, []);
+  }, [queueMode]);
 
   useEffect(() => {
     refresh().catch((e) => setError(String(e)));
@@ -84,6 +88,12 @@ export default function Home() {
       }
     };
   }, [refresh]);
+
+  function onQueueModeChange(next: QueueMode) {
+    setQueueMode(next);
+    setStoredQueueMode(next);
+    setPage(0);
+  }
 
   async function pollUntilScored(sourceId: number) {
     for (let attempt = 0; attempt < 90; attempt += 1) {
@@ -155,7 +165,7 @@ export default function Home() {
 
   useEffect(() => {
     setPage(0);
-  }, [pageSize, queueView, active.length]);
+  }, [pageSize, queueView, active.length, queueMode]);
 
   const pageCount = Math.max(1, Math.ceil(active.length / pageSize));
   const safePage = Math.min(page, pageCount - 1);
@@ -219,14 +229,29 @@ export default function Home() {
       )}
 
       <section className="queue-section">
+        {queueMode === "curiosity" && (
+          <div className="curiosity-banner" role="status">
+            <strong>Curiosity mode</strong>
+            <span>
+              Explore lane — queue ranked by intrinsic interest, not goal alignment. Good for
+              generative off-goal reading; switch back to Goals when you want exploit mode.
+            </span>
+          </div>
+        )}
         <div className="section-header">
           <div>
-            <h2 className="section-title">Active queue</h2>
+            <h2 className="section-title">
+              {queueMode === "curiosity" ? "Curiosity queue" : "Active queue"}
+            </h2>
             <span className="section-caption">
-              {active.length} sources · sorted by priority
+              {active.length} sources ·{" "}
+              {queueMode === "curiosity"
+                ? "sorted by curiosity score"
+                : "sorted by goal priority"}
             </span>
           </div>
           <div className="queue-controls">
+            <QueueModeToggle mode={queueMode} onChange={onQueueModeChange} />
             <div className="queue-controls__group" role="group" aria-label="Queue layout">
               <button
                 type="button"
@@ -271,7 +296,7 @@ export default function Home() {
                   key={item.source.id}
                   className={pageStart + index === 0 ? "source-card-grid__hero" : undefined}
                 >
-                  <SourceCard item={item} layout={queueView} />
+                  <SourceCard item={item} layout={queueView} rankMode={queueMode} />
                 </li>
               ))}
             </ul>

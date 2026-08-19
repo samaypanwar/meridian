@@ -39,3 +39,17 @@ def test_manual_rank_floats_item_up(tmp_path: Path) -> None:
     )
     active = queue.active(conn, limit=2)
     assert active[0].title == "boosted"
+
+
+def test_active_curiosity_mode_ranks_by_curiosity(tmp_path: Path) -> None:
+    conn = setup_db(tmp_path / "test.db")
+    insert_source_with_scores(
+        conn, title="on-goal", relevance=10.0, urgency0=5.0, effort=1.0, curiosity=3.0
+    )
+    insert_source_with_scores(
+        conn, title="spark", relevance=2.0, urgency0=5.0, effort=1.0, curiosity=9.0
+    )
+    goals_active = queue.active(conn, limit=2, mode="goals")
+    curiosity_active = queue.active(conn, limit=2, mode="curiosity")
+    assert goals_active[0].title == "on-goal"
+    assert curiosity_active[0].title == "spark"

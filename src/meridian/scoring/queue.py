@@ -3,9 +3,12 @@ from __future__ import annotations
 import json
 import sqlite3
 from datetime import datetime, timezone
+from typing import Literal
 
 from meridian.scoring import priority
 from meridian.store.models import Source, source_from_row
+
+QueueMode = Literal["goals", "curiosity"]
 
 
 def _current_urgency(urgency0: float, decay_lambda: float, added_at: str) -> float:
@@ -22,15 +25,21 @@ def _priority_for_row(row: sqlite3.Row) -> float:
     return priority.compute(row["relevance"], urgency, row["effort"])
 
 
-def active(conn: sqlite3.Connection, limit: int = 10) -> list[Source]:
+def _rank_score_for_row(row: sqlite3.Row, mode: QueueMode) -> float:
+    if mode == "curiosity":
+        return float(row["curiosity"] or 0.0)
+    return _priority_for_row(row)
+
+
+def active(conn: sqlite3.Connection, limit: int = 10, *, mode: QueueMode = "goals") -> list[Source]:
     rows = _queued_rows(conn)
-    ranked = _rank_rows(rows)
+    ranked = _rank_rows(rows, mode=mode)
     return [source_from_row(row) for row in ranked[:limit]]
 
 
-def backlog(conn: sqlite3.Connection) -> list[Source]:
+def backlog(conn: sqlite3.Connection, *, mode: QueueMode = "goals") -> list[Source]:
     rows = _queued_rows(conn)
-    ranked = _rank_rows(rows)
+    ranked = _rank_rows(rows, mode=mode)
     return [source_from_row(row) for row in ranked[10:]]
 
 
@@ -48,7 +57,7 @@ def pending(conn: sqlite3.Connection) -> list[Source]:
 def _queued_rows(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     rows = conn.execute(
         """
-        SELECT s.*, sc.relevance, sc.urgency0, sc.effort, sc.decay_lambda,
+        SELECT s.*, sc.relevance, sc.urgency0, sc.effort, sc.curiosity, sc.decay_lambda,
                qo.manual_rank
         FROM sources s
         JOIN scores sc ON sc.source_id = s.id
@@ -59,11 +68,12 @@ def _queued_rows(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     return list(rows)
 
 
-def _rank_rows(rows: list[sqlite3.Row]) -> list[sqlite3.Row]:
+def _rank_rows(rows: list[sqlite3.Row], *, mode: QueueMode = "goals") -> list[sqlite3.Row]:
     def sort_key(row: sqlite3.Row) -> tuple[float, float]:
         manual = row["manual_rank"]
+        rank_score = _rank_score_for_row(row, mode)
         if manual is not None:
-            return (manual, _priority_for_row(row))
-        return (_priority_for_row(row), 0.0)
+            return (manual, rank_score)
+        return (rank_score, 0.0)
 
     return sorted(rows, key=sort_key, reverse=True)

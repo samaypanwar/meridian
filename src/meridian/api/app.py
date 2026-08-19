@@ -338,8 +338,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
 
     @app.get("/queue", response_model=schemas.QueueResponse)
-    def get_queue(conn: Any = Depends(get_conn)) -> schemas.QueueResponse:
-        active = queue.active(conn)
+    def get_queue(
+        mode: str = "goals",
+        conn: Any = Depends(get_conn),
+    ) -> schemas.QueueResponse:
+        queue_mode: queue.QueueMode = "curiosity" if mode == "curiosity" else "goals"
+        active = queue.active(conn, mode=queue_mode)
         items = []
         for source in active:
             scores = repo.get_scores(conn, source.id or 0)
@@ -350,10 +354,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ]
         backlog_items = [
             _detail(conn, source, repo.get_scores(conn, source.id or 0))
-            for source in queue.backlog(conn)
+            for source in queue.backlog(conn, mode=queue_mode)
         ]
         return schemas.QueueResponse(
-            active=items, pending=pending_items, backlog=backlog_items
+            active=items, pending=pending_items, backlog=backlog_items, mode=queue_mode
         )
 
     @app.get("/sources/{source_id}", response_model=schemas.SourceDetailResponse)

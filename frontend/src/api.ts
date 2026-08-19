@@ -37,7 +37,10 @@ export interface QueueResponse {
   active: SourceDetail[];
   pending: SourceDetail[];
   backlog: SourceDetail[];
+  mode?: QueueMode;
 }
+
+export type QueueMode = "goals" | "curiosity";
 
 const BASE = "/api";
 
@@ -70,8 +73,9 @@ export function addSource(ref: string, transcript?: string) {
   });
 }
 
-export function getQueue() {
-  return request<QueueResponse>("/queue");
+export function getQueue(mode: QueueMode = "goals") {
+  const query = mode === "curiosity" ? "?mode=curiosity" : "";
+  return request<QueueResponse>(`/queue${query}`);
 }
 
 export function refetchSource(id: number) {
